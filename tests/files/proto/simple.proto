@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package api.v1;
+
+message SuperSimple {
+  string serial_number = 1;
+  string firmware_version = 2;
+  string vendor = 3;
+  string product = 4;
+
+
+}
+
+message Message {
+  oneof content {
+    SuperSimple ss = 1;
+    string test = 3;
+  }
+}
