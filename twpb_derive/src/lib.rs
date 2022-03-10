@@ -18,22 +18,45 @@ use syn::{
     Field, Fields, Ident, Path, Type, TypePath, FieldsUnnamed, FieldsNamed,MetaList, Meta, NestedMeta,
 };
 
+#[derive(Debug)]
 struct ParsedField {
     pub field_name: syn::Ident,
     pub field_numbers: Vec<u32>,
-    pub field_type: Option<syn::Type>,
+    pub field_type: syn::Type,
     pub proto_type: String,
 }
 
-impl ParsedField {
+#[derive(Debug)]
+struct ParsedVariant {
+    pub field_name: syn::Ident,
+    pub field_numbers: Vec<u32>,
+    pub field_type: syn::Type,
+    pub proto_type: String,
+}
 
-    fn parse_enum_variant(field: syn::Variant) -> syn::parse::Result<Self> {
-        let mut result = ParsedField{
+impl ParsedVariant {
+    fn parse(field: syn::Variant) -> syn::parse::Result<Self> {
+        // println!("parse enum variant {:#?}", field.fields);
+        let field_type = match field.fields {
+            syn::Fields::Unnamed(syn::FieldsUnnamed{unnamed: fields, ..}) => fields.into_iter().nth(0),
+            _ => panic!("no enum variant type {}", field.ident),
+        };
+        let field_type = match field_type {
+            Some(field_type) => field_type.ty,
+            _ => panic!("no enum variant type"),
+        };
+        let mut result = ParsedVariant{
             field_name: field.ident,
             field_numbers: vec![0],
-            field_type: None,
+            field_type: field_type,
             proto_type: "".to_owned(),
         };
+        // if let syn::Fields::Unnamed(syn::FieldsUnnamed{unnamed: fields, ..}) = field.fields {
+        //     // result.field_type = Some(fields[0].ty);
+        //     if let syn::Type::Path(syn::TypePath{path: p, ..}) = fields[0].ty {
+        //         result.field_type = Some(p);
+        //     }
+        // }
         // result.field_name = field.ident;
 
         let mut twpb_attr: Vec<_> = field.attrs
@@ -43,7 +66,7 @@ impl ParsedField {
 
         let twpb_attr = match twpb_attr.len() {
             1 => &twpb_attr[0],
-            0 => panic!("All fields of a message must specify a #[twpb] attribute, missing for field '{:?}' '{:?}'", result.field_name, field.fields),
+            0 => panic!("All fields of a message must specify a #[twpb] attribute, missing for field '{:?}'", result.field_name),
             n => panic!("A field can specify a #[twpb] attribute only once. Field '{:?}' specified it {} times.", result.field_name, n),
         };
 
@@ -95,8 +118,10 @@ impl ParsedField {
                             "sfixed32" | "sfixed64" |
                             "double" | "float" |
                             // non-numbers whatever
-                            "bool" | "string" | "bytes" | "oneof" => result.proto_type = s.to_owned(),
-                            _ => (),
+                            "bool" | "string" | "bytes" | "oneof" |
+                            // special case, embedded messages
+                            "message" => result.proto_type = s.to_owned(),
+                            _ => panic!("unknown field type '{}'", s),
                         }
                     }
                     // result.proto_type = ParsedFieldProtoType::parse(p.get_ident()
@@ -112,7 +137,9 @@ impl ParsedField {
 
         Ok(result)
     }
+}
 
+impl ParsedField {
     fn parse(field: syn::Field) -> syn::parse::Result<Self> {
 
         // let mut result: ParsedField = Default::default();
@@ -121,8 +148,9 @@ impl ParsedField {
             field_name: field.ident.expect("Field has no name"),
             field_numbers: vec![0],
             proto_type: "".to_owned(),
-            field_type: Some(field.ty),
+            field_type: field.ty,
         };
+
 
         let mut twpb_attr: Vec<_> = field.attrs
             .into_iter()
@@ -229,9 +257,10 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         // let fields: Result<Vec<_>, _> = variant.fields.into_iter()
         //     .map(|field| ParsedField::parse_enum_variant(variant))
         //     .collect();
-        let field = ParsedField::parse_enum_variant(variant)?;
+        let field = ParsedVariant::parse(variant)?;
         let field_name = field.field_name;
         let proto_type = field.proto_type;
+        let field_type = field.field_type;
         let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
         println!("'{}' of type {:?} has field numbers {:?}", 
             field_name, proto_type, field.field_numbers);
@@ -240,18 +269,33 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
         });
 
-        let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());
-        a.extend(quote!{
-            println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
-            if vec![#field_numbers].iter().any(|&i| i == field_number) {
-                println!("enum variant match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
-                // let value = ::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?;
-                // result.#field_name = #struct_name(value);
-                // return Ok(#struct_name::test(::heapless::String::from("ha")));
-                let value = #struct_name::#field_name(::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
-                return Ok(value);
-            }
-        });
+        if proto_type == "oneof" {
+            panic!("nested oneof unimplemented")
+        } else if proto_type == "message" {
+            // panic!("encountered embedded message for {}, {:?}", field_name, field_type);
+            a.extend(quote!{
+                println!("testing for embedded message match '{}::{}' [{}] = '{}'", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers), stringify!(#field_type));
+                if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                    let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
+                    println!("embedded message match with size {}", bufsize);
+                    let value = #struct_name::#field_name(#field_type::twpb_decode_iter(&mut bytes)?);
+                    return Ok(value);
+                }
+            });
+        } else {
+            let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());
+            a.extend(quote!{
+                println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
+                if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                    println!("enum variant match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
+                    // let value = ::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?;
+                    // result.#field_name = #struct_name(value);
+                    // return Ok(#struct_name::test(::heapless::String::from("ha")));
+                    let value = #struct_name::#field_name(::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
+                    return Ok(value);
+                }
+            });
+        }
     }
 
     // println!("enum fields {:?}", fields);
@@ -331,7 +375,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         if proto_type == "oneof" {
             // println!("message encountered enum, skipping. '{:#?}'", field.field_type.unwrap());
             let b = match field.field_type {
-                Some(syn::Type::Path(syn::TypePath{path: syn::Path{segments: b, ..}, ..})) => 
+                syn::Type::Path(syn::TypePath{path: syn::Path{segments: b, ..}, ..}) => 
                 b.into_iter().find(|b| b.ident == "Option" && ! b.arguments.is_empty()).unwrap().arguments,
                 _ => panic!("b"),
             };
@@ -351,6 +395,9 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     result.#field_name = #b::twpb_decode(field_number, wire_type, &mut bytes, stringify!(#field_name)).ok();
                 }
             });
+
+        } else if proto_type == "message" {
+            panic!("encountered embedded message for {}, {}", field_name, proto_type);
 
         } else {
             let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());

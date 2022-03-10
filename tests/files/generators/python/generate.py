@@ -13,6 +13,13 @@ with open("../../bin/python.simple.bin", "wb") as fd:
 
 
 m = Message()
+m.test = "teststr"
+
+with open("../../bin/python.oneof.simple.bin", "wb") as fd:
+    fd.write(m.SerializeToString())
+
+
+m = Message()
 # Python sucks
 # AttributeError: Assignment not allowed to field "ss" in protocol message object.
 # m.ss = simplemessage
@@ -20,7 +27,6 @@ m.ss.serial_number = "serial"
 m.ss.firmware_version = "firmware"
 m.ss.vendor = "vendor"
 m.ss.product = "product"
-m.test = "teststr"
 
-with open("../../bin/python.embedded.simple.bin", "wb") as fd:
+with open("../../bin/python.oneof.embedded.bin", "wb") as fd:
     fd.write(m.SerializeToString())

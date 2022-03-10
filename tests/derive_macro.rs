@@ -19,8 +19,8 @@ struct Message {
 mod message {
     #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
     pub enum Content {
-        // #[twpb(message,nr=1)]
-        // ss(super::Simple),
+        #[twpb(message,nr=1)]
+        ss(super::Simple),
         #[twpb(string,nr=3)]
         test(heapless::String<10>),
     }
@@ -43,8 +43,8 @@ fn test_simple(){
 }
 
 #[test]
-fn test_embedded_simple(){
-    let dummydata = include_bytes!("files/bin/python.embedded.simple.bin");
+fn test_oneof_simple(){
+    let dummydata = include_bytes!("files/bin/python.oneof.simple.bin");
 
     let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
     let expected = Message {
@@ -54,21 +54,19 @@ fn test_embedded_simple(){
     println!("{:?}", parsed);
 }
 
-// #[test]
-// fn test_embedded(){
-//     // let dummydata = [0 as u8,0,1];
-//     let dummydata = include_bytes!("files/bin/python.embedded.bin");
+#[test]
+fn test_oneof_embedded(){
+    let dummydata = include_bytes!("files/bin/python.oneof.embedded.bin");
 
-//     let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
-//     let expected = Message {
-//         content: Some(message::Content::test(heapless::String::from("ha"))),
-//         // {
-//         //     serial: heapless::String::from("serial"),
-//         //     firmware_version: heapless::String::from("firmware"),
-//         //     vendor: heapless::String::from("vendor"),
-//         //     product: heapless::String::from("product"),
-//         // }
-//     };
-//     assert_eq!(parsed, expected);
-//     println!("{:?}", parsed);
-// }
+    let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
+    let expected = Message {
+        content: Some(message::Content::ss(Simple{
+            serial: heapless::String::from("serial"),
+            firmware_version: heapless::String::from("firmware"),
+            vendor: heapless::String::from("vendor"),
+            product: heapless::String::from("product"),
+        })),
+    };
+    assert_eq!(parsed, expected);
+    println!("{:?}", parsed);
+}
