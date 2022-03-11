@@ -16,4 +16,5 @@ message Message {
     SuperSimple ss = 1;
     string test = 3;
   }
+  string something_else = 5;
 }

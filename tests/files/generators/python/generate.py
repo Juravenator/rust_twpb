@@ -7,14 +7,12 @@ simplemessage.serial_number = "serial"
 simplemessage.firmware_version = "firmware"
 simplemessage.vendor = "vendor"
 simplemessage.product = "product"
-
 with open("../../bin/python.simple.bin", "wb") as fd:
     fd.write(simplemessage.SerializeToString())
 
 
 m = Message()
 m.test = "teststr"
-
 with open("../../bin/python.oneof.simple.bin", "wb") as fd:
     fd.write(m.SerializeToString())
 
@@ -27,6 +25,7 @@ m.ss.serial_number = "serial"
 m.ss.firmware_version = "firmware"
 m.ss.vendor = "vendor"
 m.ss.product = "product"
+m.something_else = "something else"
 
 with open("../../bin/python.oneof.embedded.bin", "wb") as fd:
     fd.write(m.SerializeToString())

@@ -14,6 +14,11 @@ struct Simple{
 struct Message {
     #[twpb(oneof,nr="1-3")]
     content: ::core::option::Option<message::Content>,
+    // To test that our oneof (which contains a Message object)
+    // consumes only the bytes its supposed to, we have an extra
+    // value after its bytestream.
+    #[twpb(string,nr=5)]
+    something_else: heapless::String<20>,
 }
 
 mod message {
@@ -49,6 +54,7 @@ fn test_oneof_simple(){
     let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
     let expected = Message {
         content: Some(message::Content::test(heapless::String::from("teststr"))),
+        something_else: heapless::String::from(""),
     };
     assert_eq!(parsed, expected);
     println!("{:?}", parsed);
@@ -66,6 +72,7 @@ fn test_oneof_embedded(){
             vendor: heapless::String::from("vendor"),
             product: heapless::String::from("product"),
         })),
+        something_else: heapless::String::from("something else"),
     };
     assert_eq!(parsed, expected);
     println!("{:?}", parsed);

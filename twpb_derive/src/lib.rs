@@ -278,7 +278,8 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
                     let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
                     println!("embedded message match with size {}", bufsize);
-                    let value = #struct_name::#field_name(#field_type::twpb_decode_iter(&mut bytes)?);
+                    let iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
+                    let value = #struct_name::#field_name(#field_type::twpb_decode_iter(iterator)?);
                     return Ok(value);
                 }
             });
