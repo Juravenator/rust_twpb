@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package api.v1;
+import "api/api.proto";
 
 message SuperSimple {
   string serial_number = 1;

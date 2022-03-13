@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 from simple_pb2 import SuperSimple, Message
+import api.api_pb2 as api
+import api.v1.v1_pb2 as api_v1
 
 simplemessage = SuperSimple()
 simplemessage.serial_number = "serial"
@@ -28,4 +30,10 @@ m.ss.product = "product"
 m.something_else = "something else"
 
 with open("../../bin/python.oneof.embedded.bin", "wb") as fd:
+    fd.write(m.SerializeToString())
+
+
+m = api.Message()
+m.v1_request.getInfo.SetInParent()
+with open("../../bin/python.api.getInfo.bin", "wb") as fd:
     fd.write(m.SerializeToString())
