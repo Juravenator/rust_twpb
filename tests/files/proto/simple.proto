@@ -7,8 +7,6 @@ message SuperSimple {
   string firmware_version = 2;
   string vendor = 3;
   string product = 4;
-
-
 }
 
 message Message {

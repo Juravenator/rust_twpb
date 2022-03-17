@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+message SimpleTypes {
+  int32 int32 = 1;
+  int64 int64 = 2;
+  uint32 uint32 = 3;
+  uint64 uint64 = 4;
+  sint32 sint32 = 5;
+  sint64 sint64 = 6;
+  fixed32 fixed32 = 7;
+  fixed64 fixed64 = 8;
+  sfixed32 sfixed32 = 9;
+  sfixed64 sfixed64 = 10;
+  double double = 11;
+  float float = 12;
+  bool bool = 13;
+  string string = 14;
+  bytes bytes = 15;
+}
+
+message RepeatedTypes {
+  repeated int32 int32 = 1 [packed=true];
+  // repeated int64 int64 = 2;
+  // repeated uint32 uint32 = 3;
+  // repeated uint64 uint64 = 4;
+  // repeated sint32 sint32 = 5;
+  // repeated sint64 sint64 = 6;
+  // repeated fixed32 fixed32 = 7;
+  // repeated fixed64 fixed64 = 8;
+  // repeated sfixed32 sfixed32 = 9;
+  // repeated sfixed64 sfixed64 = 10;
+  // repeated double double = 11;
+  // repeated float float = 12;
+  // repeated bool bool = 13;
+  repeated string string = 14;
+  // repeated bytes bytes = 15;
+  repeated int32 int32_notpacked = 16 [packed=false];
+}

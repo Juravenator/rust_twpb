@@ -176,6 +176,21 @@ where I: Iterator<Item = &'a u8> {
     decode_leb128_i32(&mut bytes)
 }
 
+pub fn decode_int64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    decode_leb128_i64(&mut bytes)
+}
+
+pub fn decode_uint32<'a, I>(mut bytes: I, field_name: &str) -> Result<u32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    decode_leb128_u32(&mut bytes)
+}
+
+pub fn decode_uint64<'a, I>(mut bytes: I, field_name: &str) -> Result<u64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    decode_leb128(&mut bytes)
+}
+
 pub fn decode_unknown<'a, I>(mut bytes: I, wire_type: u8) -> Result<(), DecodeError>
 where I: Iterator<Item = &'a u8> {
     match wire_type {
