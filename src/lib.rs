@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 #[derive(Debug)]
 pub enum DecodeError {
     EmptyBuffer,
     UnexpectedEndOfBuffer,
     TooLargeVarint,
+    StringParseError,
     UnknownFieldNumber(usize),
     FieldOverflow(String),
     WrongWireType(u8, String),
@@ -157,19 +160,18 @@ where I: Iterator<Item = &'a u8> {
         return Err(DecodeError::FieldOverflow(field_name.to_string()))
     }
 
-    let mut s: heapless::String<SIZE> = heapless::String::new();
+    let mut strbuf = heapless::Vec::<u8, SIZE>::new();
     for i in 0..bufsize as usize {
         let mut byte = match bytes.next() {
-            Some(byte) => s.push(byte.to_owned() as char),
+            Some(byte) => strbuf.push(*byte),
             None => return Err(DecodeError::UnexpectedEndOfBuffer),
         };
     }
-
-    Ok(s)
+    let s = core::str::from_utf8(&strbuf).or(Err(DecodeError::StringParseError))?;
+    heapless::String::from_str(s).or(Err(DecodeError::StringParseError))
 }
 
 pub fn decode_int32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    let val = decode_leb128_i32(&mut bytes)?;
-    Ok(val)
+    decode_leb128_i32(&mut bytes)
 }
