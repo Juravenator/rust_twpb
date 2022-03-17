@@ -24,6 +24,7 @@ struct ParsedField {
     pub field_numbers: Vec<u32>,
     pub field_type: syn::Type,
     pub proto_type: String,
+    pub repeated: bool,
 }
 
 #[derive(Debug)]
@@ -149,6 +150,7 @@ impl ParsedField {
             field_numbers: vec![0],
             proto_type: "".to_owned(),
             field_type: field.ty,
+            repeated: false,
         };
 
 
@@ -213,7 +215,8 @@ impl ParsedField {
                             "double" | "float" |
                             // non-numbers whatever
                             "bool" | "string" | "bytes" | "oneof" => result.proto_type = s.to_owned(),
-                            _ => (),
+                            "repeated" => result.repeated = true,
+                            _ => panic!("unknown field type '{}'", s),
                         }
                     }
                     // result.proto_type = ParsedFieldProtoType::parse(p.get_ident()
@@ -372,6 +375,11 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             println!("Dealing with '{}::{}' ({}) at field numbers [{}]",
                 stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
         });
+        if field.repeated {
+            q.extend(quote!{
+                result.#field_name = ::heapless::Vec::new();
+            })
+        }
 
         if proto_type == "oneof" {
             // println!("message encountered enum, skipping. '{:#?}'", field.field_type.unwrap());
@@ -402,12 +410,36 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
         } else {
             let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());
-            a.extend(quote!{
-                if vec![#field_numbers].iter().any(|&i| i == field_number) {
-                    println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
-                    result.#field_name = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
-                }
-            });
+            if field.repeated {
+                a.extend(quote!{
+                    if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                        // packed repeated field
+                        // 'string' and 'bytes' are never packed, because their non-repeated encoding is already the same as packed repeated encoding
+                        if wire_type == ::twpb::WireTypes::LengthDelimited && stringify!(#proto_type) != "string" && stringify!(#proto_type) != "bytes" {
+                            let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
+                            let mut iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
+                            loop {
+                                match ::twpb::#parse_fn(&mut iterator, stringify!(#field_name)) {
+                                    Ok(value) => result.#field_name.push(value),
+                                    Err(::twpb::DecodeError::EmptyBuffer) => break,
+                                    Err(e) => return Err(e),
+                                };
+                            }
+                        // non-packed repeated field
+                        } else {
+                            let value = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
+                            result.#field_name.push(value);
+                        }
+                    }
+                });
+            } else {
+                a.extend(quote!{
+                    if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                        println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
+                        result.#field_name = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
+                    }
+                });
+            }
         }
     }
 

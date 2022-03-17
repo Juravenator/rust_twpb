@@ -5,6 +5,23 @@ pub enum DecodeError {
     TooLargeVarint,
     UnknownFieldNumber(usize),
     FieldOverflow(String),
+    WrongWireType(u8, String),
+}
+
+// https://developers.google.com/protocol-buffers/docs/encoding#structure
+pub mod WireTypes {
+    // int32, int64, uint32, uint64, sint32, sint64, bool, enum
+    pub const Varint: u8 = 0;
+    // fixed64, sfixed64, double
+    pub const B64: u8 = 1;
+    // string, bytes, embedded messages, packed repeated fields
+    pub const LengthDelimited: u8 = 2;
+    // groups (deprecated)
+    pub const StartGroup: u8 = 3;
+    // groups (deprecated)
+    pub const EndGroup: u8 = 4;
+    // fixed32, sfixed32, float
+    pub const B32: u8 = 5;
 }
 
 
@@ -149,4 +166,10 @@ where I: Iterator<Item = &'a u8> {
     }
 
     Ok(s)
+}
+
+pub fn decode_int32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let val = decode_leb128_i32(&mut bytes)?;
+    Ok(val)
 }
