@@ -42,8 +42,9 @@ where I: Iterator<Item = &'a u8> {
     // the 1st bit (MSB) denotes wether or not it is the last chunk (0) or not (1).
     let mut last_encountered_msb = true;
 
-    // Protobuf uses up to 64bit types for varints, which need 9 bytes in LEB128
-    let mut tag_bytes = heapless::Vec::<u8, 9>::new();
+    // Protobuf uses up to 64bit types for unsigned varints, which need 9 bytes in LEB128
+    // However, signed varints use 11...
+    let mut tag_bytes = heapless::Vec::<u8, 11>::new();
 
     // Remove those MSBs and collect our chunks.
     // We keep the 7-bit chunks in an 8-bit byte, this is not a problem,
@@ -73,7 +74,18 @@ where I: Iterator<Item = &'a u8> {
     // so we need to swap the order of the 7-bit chunks.
     let mut result: u64 = 0;
     for (i, byte) in tag_bytes.into_iter().enumerate() {
-        result = result | ((byte as u64) << (7*i));
+        if i < 10 {
+            result = result | ((byte as u64) << (7*i));
+        } else {
+            // Hack to not have to use u128 instead of u64.
+            // Signed integers always encode into 10 bytes, and end with 0x01, 
+            // which after decoding is __ONE__ bit too much for u64.
+            // Since it only serves as a stop byte, throw it away.
+            // If this _isn't_ 0x01 however, hello overflow.
+            if !(i == 10 && byte == 0x01) {
+                return Err(DecodeError::TooLargeVarint{});
+            }
+        }
     }
     Ok(result)
 }
@@ -83,9 +95,25 @@ where I: Iterator<Item = &'a u8> {
     let val = decode_leb128(bytes)?;
     // If the parsed value overflows a u32
     if ((val & 0xFF_FF_FF_FF_00_00_00_00) >> 32) != 0 {
-        return Err(DecodeError::TooLargeVarint);
+        Err(DecodeError::TooLargeVarint)
+    } else {
+        Ok((val & 0xFF_FF_FF_FF) as u32)
     }
-    Ok((val & 0xFF_FF_FF_FF) as u32)
+}
+
+pub fn decode_leb128_i64<'a, I>(mut bytes: I) -> Result<i64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let val = decode_leb128(bytes)?;
+    Ok(val as i64)
+}
+
+pub fn decode_leb128_i32<'a, I>(mut bytes: I) -> Result<i32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let val = decode_leb128_i64(bytes)?;
+    match i32::try_from(val) {
+        Ok(val) => Ok(val),
+        Err(_) => Err(DecodeError::TooLargeVarint),
+    }
 }
 
 
