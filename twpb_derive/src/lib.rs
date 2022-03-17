@@ -399,6 +399,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             // a.extend(quote!{println!("I AM {}", stringify!(#b))});
             a.extend(quote!{
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                    fieldMatch = true;
                     println!("parsing enum field of type '{}'", stringify!(#b));
                     println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                     result.#field_name = #b::twpb_decode(field_number, wire_type, &mut bytes, stringify!(#field_name)).ok();
@@ -413,6 +414,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             if field.repeated {
                 a.extend(quote!{
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                        fieldMatch = true;
                         // packed repeated field
                         // 'string' and 'bytes' are never packed, because their non-repeated encoding is already the same as packed repeated encoding
                         if wire_type == ::twpb::WireTypes::LengthDelimited && stringify!(#proto_type) != "string" && stringify!(#proto_type) != "bytes" {
@@ -435,6 +437,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             } else {
                 a.extend(quote!{
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                        fieldMatch = true;
                         println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                         result.#field_name = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
                     }
@@ -478,7 +481,11 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                         Ok((field_number, wire_type)) => {
                             println!("got field nr {}", field_number);
                             println!("got wire type {}", wire_type);
+                            let mut fieldMatch = false;
                             #a
+                            if !fieldMatch {
+                                ::twpb::decode_unknown(&mut bytes, wire_type)?;
+                            }
                             // return Ok(result);
                         },
                         Err(::twpb::DecodeError::EmptyBuffer) => break,

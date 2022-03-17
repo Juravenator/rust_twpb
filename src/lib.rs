@@ -175,3 +175,31 @@ pub fn decode_int32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, Decode
 where I: Iterator<Item = &'a u8> {
     decode_leb128_i32(&mut bytes)
 }
+
+pub fn decode_unknown<'a, I>(mut bytes: I, wire_type: u8) -> Result<(), DecodeError>
+where I: Iterator<Item = &'a u8> {
+    match wire_type {
+        WireTypes::Varint => {
+            decode_leb128_u32(&mut bytes)?;
+        }
+        WireTypes::B32 => {
+            for _ in 0..32/8 {
+                bytes.next();
+            }
+        },
+        WireTypes::B64 => {
+            for _ in 0..64/8 {
+                bytes.next();
+            }
+        },
+        WireTypes::LengthDelimited => {
+            let bufsize = decode_leb128_u32(&mut bytes)?;
+            for _ in 0..bufsize {
+                bytes.next();
+            }
+        },
+        WireTypes::StartGroup | WireTypes::EndGroup => panic!("Groups are not supported"),
+        _ => panic!("unsupported wire type '{}'", wire_type),
+    };
+    Ok(())
+}
