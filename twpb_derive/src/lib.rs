@@ -417,7 +417,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                         fieldMatch = true;
                         // packed repeated field
                         // 'string' and 'bytes' are never packed, because their non-repeated encoding is already the same as packed repeated encoding
-                        if wire_type == ::twpb::WireTypes::LengthDelimited && stringify!(#proto_type) != "string" && stringify!(#proto_type) != "bytes" {
+                        if wire_type == ::twpb::WireTypes::LengthDelimited && #proto_type != "string" && #proto_type != "bytes" {
                             let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
                             let mut iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
                             loop {

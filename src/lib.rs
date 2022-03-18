@@ -95,7 +95,7 @@ where I: Iterator<Item = &'a u8> {
     let mut result: u64 = 0;
     for (i, byte) in tag_bytes.into_iter().enumerate() {
         if i < 10 {
-            result = result | ((byte as u64) << (7*i));
+            result |= (byte as u64) << (7*i);
         } else {
             // Hack to not have to use u128 instead of u64.
             // Signed integers always encode into 10 bytes, and end with 0x01, 
@@ -252,4 +252,99 @@ where I: Iterator<Item = &'a u8> {
         _ => panic!("unsupported wire type '{}'", wire_type),
     };
     Ok(())
+}
+
+pub fn decode_fixed32<'a, I>(mut bytes: I, field_name: &str) -> Result<u32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let mut value: u32 = 0;
+    for i in 0..32/8 {
+        if let Some(mut byte) = bytes.next() {
+            value |= (*byte as u32) << (8*i);
+        } else if i == 0 {
+            return Err(DecodeError::EmptyBuffer{});
+        } else {
+            return Err(DecodeError::UnexpectedEndOfBuffer{});
+        }
+    }
+    Ok(value)
+}
+
+pub fn decode_fixed64<'a, I>(mut bytes: I, field_name: &str) -> Result<u64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let mut value: u64 = 0;
+    for i in 0..64/8 {
+        if let Some(mut byte) = bytes.next() {
+            value |= (*byte as u64) << (8*i);
+        } else if i == 0 {
+            return Err(DecodeError::EmptyBuffer{});
+        } else {
+            return Err(DecodeError::UnexpectedEndOfBuffer{});
+        }
+    }
+    Ok(value)
+}
+
+pub fn decode_sfixed32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    decode_fixed32(bytes, field_name).map(|u| u as i32)
+}
+
+pub fn decode_sfixed64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    decode_fixed64(bytes, field_name).map(|u| u as i64)
+}
+
+pub fn decode_float<'a, I>(mut bytes: I, field_name: &str) -> Result<f32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let mut buf = [0 as u8; 32/8];
+    for i in 0..32/8 {
+        match bytes.next() {
+            Some(byte) => buf[i] = *byte,
+            None if i == 0 => return Err(DecodeError::EmptyBuffer{}),
+            None => return Err(DecodeError::UnexpectedEndOfBuffer{}),
+        }
+    }
+    Ok(f32::from_le_bytes(buf))
+}
+
+pub fn decode_double<'a, I>(mut bytes: I, field_name: &str) -> Result<f64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let mut buf = [0 as u8; 64/8];
+    for i in 0..64/8 {
+        match bytes.next() {
+            Some(byte) => buf[i] = *byte,
+            None if i == 0 => return Err(DecodeError::EmptyBuffer{}),
+            None => return Err(DecodeError::UnexpectedEndOfBuffer{}),
+        }
+    }
+    Ok(f64::from_le_bytes(buf))
+}
+
+pub fn decode_bool<'a, I>(mut bytes: I, field_name: &str) -> Result<bool, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    match bytes.next() {
+        Some(byte) => Ok(*byte & 1 != 0),
+        None => return Err(DecodeError::EmptyBuffer{}),
+    }
+}
+
+pub fn decode_bytes<'a, const SIZE: usize, I>(mut bytes: I, field_name: &str) -> Result<heapless::Vec<u8, SIZE>, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    println!("decoding bytes of max size {}", SIZE);
+
+    let bufsize = decode_leb128_u32(&mut bytes)?;
+
+    println!("bytes in protobuf is size {}", bufsize);
+    if bufsize > (SIZE as u32) {
+        return Err(DecodeError::FieldOverflow(field_name.to_string()))
+    }
+
+    let mut strbuf = heapless::Vec::<u8, SIZE>::new();
+    for i in 0..bufsize as usize {
+        let mut byte = match bytes.next() {
+            Some(byte) => strbuf.push(*byte),
+            None => return Err(DecodeError::UnexpectedEndOfBuffer),
+        };
+    }
+    Ok(strbuf)
 }

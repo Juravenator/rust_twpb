@@ -48,7 +48,7 @@ m.sint64 = 69
 m.fixed32 = 2**32-1
 m.fixed64 = 42
 m.sfixed32 = 2**31-1
-m.sfixed64 = 42
+m.sfixed64 = -2**63+1
 m.double = 1
 m.float = 3.1415926535
 m.bool = 1
@@ -58,24 +58,21 @@ with open("../../bin/python.types.simple.bin", "wb") as fd:
     fd.write(m.SerializeToString())
 
 m = RepeatedTypes()
-# m.int32.extend([-69, 69])
-m.int32.extend([4,300])
-# m.int64.extend([69, -69])
-# m.uint32.extend([42, 420])
-# m.uint64.extend([42, 420])
-# m.sint32.extend([-69, 69])
-# m.sint64.extend([69, -69])
-# m.fixed32.extend([2**32-1, 1])
-# m.fixed64.extend([42, 2**64-1])
-# m.sfixed32.extend([2**31-1, -69])
-# m.sfixed64.extend([42, -42])
-# m.double.extend([1, 3.1415926535])
-# m.float.extend([3.1415926535, 1])
-# m.bool.extend([1, 0])
-# m.string.extend(["🐉", "अरे"])
-m.string.extend(["la", "la"])
-# m.bytes.extend([b"ABCD"])
-# m.int32_notpacked.extend([-69, 69])
-m.int32_notpacked.extend([4,300])
+m.int32.extend([4, -300])
+m.int64.extend([69, -69])
+m.uint32.extend([42, 420])
+m.uint64.extend([42, 420])
+m.sint32.extend([-69, 69])
+m.sint64.extend([69, -69])
+m.fixed32.extend([2**32-1, 1])
+m.fixed64.extend([42, 2**64-1])
+m.sfixed32.extend([2**31-1, -69])
+m.sfixed64.extend([42, -42])
+m.double.extend([1, 3.1415926535])
+m.float.extend([3.1415926535, 1])
+m.bool.extend([1, 0])
+m.string.extend(["🐉", "अरे"])
+m.bytes.extend([b"ASDF", b"ABCD"])
+m.int32_notpacked.extend([4,-300])
 with open("../../bin/python.types.repeated.bin", "wb") as fd:
     fd.write(m.SerializeToString())
