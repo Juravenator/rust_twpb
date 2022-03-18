@@ -8,10 +8,10 @@ struct SimpleTypes {
     uint32: u32,
     #[twpb(uint64,nr=4)]
     uint64: u64,
-    // #[twpb(sint32,nr=5)]
-    // sint32: i32,
-    // #[twpb(sint64,nr=6)]
-    // sint64: i64,
+    #[twpb(sint32,nr=5)]
+    sint32: i32,
+    #[twpb(sint64,nr=6)]
+    sint64: i64,
     // #[twpb(fixed32,nr=7)]
     // fixed32: u32,
     // #[twpb(fixed64,nr=8)]
@@ -78,6 +78,8 @@ fn test_types(){
         int64: -9223372036854775808,
         uint32: 42,
         uint64: 1,
+        sint32: -69,
+        sint64: 69,
         string: heapless::String::from("🐉"),
     };
     assert_eq!(parsed, expected);

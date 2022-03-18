@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use core::str::FromStr;
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -189,6 +189,41 @@ where I: Iterator<Item = &'a u8> {
 pub fn decode_uint64<'a, I>(mut bytes: I, field_name: &str) -> Result<u64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     decode_leb128(&mut bytes)
+}
+
+pub fn decode_sint32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    let value = decode_leb128_u32(&mut bytes)?;
+    // sint32/64 values are identical to their int32/64 counterparts, except that they
+    // use ZigZag encoding to prevent negative numbers immediately taking up 10 bytes in leb128.
+    // They do this by mapping low->high signed numbers to low->high unsigned numbers.
+    // E.g 0=0, -1=1, 1=2, -2=3, 2=4, -3=5, ...
+
+    // Notice in the example above that all positive signed numbers
+    // are mapped to even unsigned numbers.
+    // So in this zigzag encoding, the LSB is acting as a sign bit.
+    // Remove it to obtain the absolute value.
+    let abs = (value >> 1) as i32;
+
+    // Now get the sign bit.
+    // Mask out everything except the LSB.
+    let sign = (value & 1) as i32;
+    // Then perform two's complement if the sign bit is set.
+    // To perform two's complement, one inverts and adds +1.
+    // We can cover both cases with an XOR.
+    // Examples: 3 maps to -2 and 4 maps to 2
+    // 0011 (3) => abs=..001, sign=..01 => ..001 XOR ..1111 (-1) = ..1110 (-2)
+    // 0100 (4) => abs=..010, sign=..00 => ..010 XOR ..0000 (-0) = ..0010 (2)
+    Ok(abs ^ -sign)
+}
+
+pub fn decode_sint64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+where I: Iterator<Item = &'a u8> {
+    // same as decode_sint32, but everything is 64
+    let value = decode_leb128(&mut bytes)?;
+    let abs = (value >> 1) as i64;
+    let sign = (value & 1) as i64;
+    Ok(abs ^ -sign)
 }
 
 pub fn decode_unknown<'a, I>(mut bytes: I, wire_type: u8) -> Result<(), DecodeError>
