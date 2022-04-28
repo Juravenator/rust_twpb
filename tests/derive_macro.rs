@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Default, ::twpb_derive::Message)]
-struct Simple{
+pub struct Simple{
     #[twpb(string,nr=1)]
     serial: heapless::String<10>,
     #[twpb(string,nr=2)]
@@ -11,7 +11,7 @@ struct Simple{
 }
 
 #[derive(Debug, PartialEq, Default, ::twpb_derive::Message)]
-struct Message {
+pub struct Message {
     #[twpb(oneof,nr="1-3")]
     content: ::core::option::Option<message::Content>,
     // To test that our oneof (which contains a Message object)
@@ -25,9 +25,9 @@ mod message {
     #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
     pub enum Content {
         #[twpb(message,nr=1)]
-        ss(super::Simple),
+        Ss(super::Simple),
         #[twpb(string,nr=3)]
-        test(heapless::String<10>),
+        Test(heapless::String<10>),
     }
 }
 
@@ -53,7 +53,7 @@ fn test_oneof_simple(){
 
     let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
     let expected = Message {
-        content: Some(message::Content::test(heapless::String::from("teststr"))),
+        content: Some(message::Content::Test(heapless::String::from("teststr"))),
         something_else: heapless::String::from(""),
     };
     assert_eq!(parsed, expected);
@@ -66,7 +66,7 @@ fn test_oneof_embedded(){
 
     let parsed = Message::twpb_decode_iter(dummydata.iter()).unwrap();
     let expected = Message {
-        content: Some(message::Content::ss(Simple{
+        content: Some(message::Content::Ss(Simple{
             serial: heapless::String::from("serial"),
             firmware_version: heapless::String::from("firmware"),
             vendor: heapless::String::from("vendor"),

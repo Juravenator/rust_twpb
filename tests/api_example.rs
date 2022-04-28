@@ -8,9 +8,9 @@ mod message {
     #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
     pub enum Content {
         #[twpb(message,nr=1)]
-        v1_request(super::v1::Request),
+        V1Request(super::v1::Request),
         #[twpb(message,nr=2)]
-        v1_response(super::v1::Response),
+        V1Response(super::v1::Response),
     }
 }
 
@@ -52,9 +52,9 @@ mod v1 {
         #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
         pub enum Request {
             #[twpb(message,nr=1)]
-            getInfo(super::EmptyRequest),
+            GetInfo(super::EmptyRequest),
             #[twpb(message,nr=2)]
-            getOtherThing(super::EmptyRequest),
+            GetOtherThing(super::EmptyRequest),
         }
     }
 
@@ -62,9 +62,9 @@ mod v1 {
         #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
         pub enum Response {
             #[twpb(message,nr=1)]
-            info(super::SysInfo),
+            Info(super::SysInfo),
             #[twpb(message,nr=2)]
-            other_thing(super::OtherThing),
+            OtherThing(super::OtherThing),
         }
     }
 }
@@ -77,14 +77,14 @@ fn test_get_info(){
 
     // show-off version
     match message.content {
-        Some(message::Content::v1_request(v1::Request{request: Some(v1::request::Request::getInfo(_))})) => (),
+        Some(message::Content::V1Request(v1::Request{request: Some(v1::request::Request::GetInfo(_))})) => (),
         _ => panic!("unexpected api message content"),
     }
 
     // what you're likely gonna actually use
     match message.content {
-        Some(message::Content::v1_request(message)) => match message.request {
-            Some(v1::request::Request::getInfo(_)) => (),
+        Some(message::Content::V1Request(message)) => match message.request {
+            Some(v1::request::Request::GetInfo(_)) => (),
             _ => panic!("wrong request type"),
         },
         _ => panic!("unexpected api message content"),
@@ -98,8 +98,8 @@ fn test_get_info_2(){
     let message = Message::twpb_decode_iter(dummydata.iter()).unwrap();
 
     match message.content {
-        Some(message::Content::v1_request(message)) => match message.request {
-            Some(v1::request::Request::getOtherThing(_)) => (),
+        Some(message::Content::V1Request(message)) => match message.request {
+            Some(v1::request::Request::GetOtherThing(_)) => (),
             _ => panic!("wrong request type"),
         },
         _ => panic!("unexpected api message content"),

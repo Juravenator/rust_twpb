@@ -1,6 +1,6 @@
 use core::str::FromStr;
 
-use crate::wiretypes::WireTypes;
+use crate::wiretypes::wire_types;
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -29,7 +29,7 @@ where I: Iterator<Item = &'a u8> {
     while last_encountered_msb {
         println!("getting varint byte");
         // As long as last MSB == 1, we need to read in more bytes
-        if let Some(mut byte) = bytes.next() {
+        if let Some(byte) = bytes.next() {
             println!("varint byte {:X}", byte);
             last_encountered_msb = byte & 0x80 != 0;
             println!("MSB {:?}", last_encountered_msb);
@@ -67,7 +67,7 @@ where I: Iterator<Item = &'a u8> {
     Ok(result)
 }
 
-pub fn leb128_u32<'a, I>(mut bytes: I) -> Result<u32, DecodeError>
+pub fn leb128_u32<'a, I>(bytes: I) -> Result<u32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let val = leb128(bytes)?;
     // If the parsed value overflows a u32
@@ -78,13 +78,13 @@ where I: Iterator<Item = &'a u8> {
     }
 }
 
-pub fn leb128_i64<'a, I>(mut bytes: I) -> Result<i64, DecodeError>
+pub fn leb128_i64<'a, I>(bytes: I) -> Result<i64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let val = leb128(bytes)?;
     Ok(val as i64)
 }
 
-pub fn leb128_i32<'a, I>(mut bytes: I) -> Result<i32, DecodeError>
+pub fn leb128_i32<'a, I>(bytes: I) -> Result<i32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let val = leb128_i64(bytes)?;
     match i32::try_from(val) {
@@ -94,7 +94,7 @@ where I: Iterator<Item = &'a u8> {
 }
 
 
-pub fn tag<'a, I>(mut bytes: I) -> Result<(u32, u8), DecodeError>
+pub fn tag<'a, I>(bytes: I) -> Result<(u32, u8), DecodeError>
 where I: Iterator<Item = &'a u8> {
     let val = leb128_u32(bytes)?;
     // Wire type is specified using the 3 LSBs.
@@ -118,9 +118,9 @@ where I: Iterator<Item = &'a u8> {
     }
 
     let mut strbuf = heapless::Vec::<u8, SIZE>::new();
-    for i in 0..bufsize as usize {
-        let mut byte = match bytes.next() {
-            Some(byte) => strbuf.push(*byte),
+    for _ in 0..bufsize as usize {
+        match bytes.next() {
+            Some(byte) => strbuf.push(*byte).map_err(|_| DecodeError::UnexpectedEndOfBuffer)?,
             None => return Err(DecodeError::UnexpectedEndOfBuffer),
         };
     }
@@ -128,27 +128,27 @@ where I: Iterator<Item = &'a u8> {
     heapless::String::from_str(s).or(Err(DecodeError::StringParseError))
 }
 
-pub fn int32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+pub fn int32<'a, I>(mut bytes: I, _field_name: &str) -> Result<i32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     leb128_i32(&mut bytes)
 }
 
-pub fn int64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+pub fn int64<'a, I>(mut bytes: I, _field_name: &str) -> Result<i64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     leb128_i64(&mut bytes)
 }
 
-pub fn uint32<'a, I>(mut bytes: I, field_name: &str) -> Result<u32, DecodeError>
+pub fn uint32<'a, I>(mut bytes: I, _field_name: &str) -> Result<u32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     leb128_u32(&mut bytes)
 }
 
-pub fn uint64<'a, I>(mut bytes: I, field_name: &str) -> Result<u64, DecodeError>
+pub fn uint64<'a, I>(mut bytes: I, _field_name: &str) -> Result<u64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     leb128(&mut bytes)
 }
 
-pub fn sint32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+pub fn sint32<'a, I>(mut bytes: I, _field_name: &str) -> Result<i32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let value = leb128_u32(&mut bytes)?;
     // sint32/64 values are identical to their int32/64 counterparts, except that they
@@ -174,7 +174,7 @@ where I: Iterator<Item = &'a u8> {
     Ok(abs ^ -sign)
 }
 
-pub fn sint64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+pub fn sint64<'a, I>(mut bytes: I, _field_name: &str) -> Result<i64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     // same as sint32, but everything is 64
     let value = leb128(&mut bytes)?;
@@ -186,36 +186,36 @@ where I: Iterator<Item = &'a u8> {
 pub fn unknown<'a, I>(mut bytes: I, wire_type: u8) -> Result<(), DecodeError>
 where I: Iterator<Item = &'a u8> {
     match wire_type {
-        WireTypes::Varint => {
+        wire_types::VARINT => {
             leb128_u32(&mut bytes)?;
         }
-        WireTypes::B32 => {
+        wire_types::B32 => {
             for _ in 0..32/8 {
                 bytes.next();
             }
         },
-        WireTypes::B64 => {
+        wire_types::B64 => {
             for _ in 0..64/8 {
                 bytes.next();
             }
         },
-        WireTypes::LengthDelimited => {
+        wire_types::LENGTHDELIMITED => {
             let bufsize = leb128_u32(&mut bytes)?;
             for _ in 0..bufsize {
                 bytes.next();
             }
         },
-        WireTypes::StartGroup | WireTypes::EndGroup => panic!("Groups are not supported"),
+        wire_types::STARTGROUP | wire_types::ENDGROUP => panic!("Groups are not supported"),
         _ => panic!("unsupported wire type '{}'", wire_type),
     };
     Ok(())
 }
 
-pub fn fixed32<'a, I>(mut bytes: I, field_name: &str) -> Result<u32, DecodeError>
+pub fn fixed32<'a, I>(mut bytes: I, _field_name: &str) -> Result<u32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let mut value: u32 = 0;
     for i in 0..32/8 {
-        if let Some(mut byte) = bytes.next() {
+        if let Some(byte) = bytes.next() {
             value |= (*byte as u32) << (8*i);
         } else if i == 0 {
             return Err(DecodeError::EmptyBuffer{});
@@ -226,11 +226,11 @@ where I: Iterator<Item = &'a u8> {
     Ok(value)
 }
 
-pub fn fixed64<'a, I>(mut bytes: I, field_name: &str) -> Result<u64, DecodeError>
+pub fn fixed64<'a, I>(mut bytes: I, _field_name: &str) -> Result<u64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let mut value: u64 = 0;
     for i in 0..64/8 {
-        if let Some(mut byte) = bytes.next() {
+        if let Some(byte) = bytes.next() {
             value |= (*byte as u64) << (8*i);
         } else if i == 0 {
             return Err(DecodeError::EmptyBuffer{});
@@ -241,17 +241,17 @@ where I: Iterator<Item = &'a u8> {
     Ok(value)
 }
 
-pub fn sfixed32<'a, I>(mut bytes: I, field_name: &str) -> Result<i32, DecodeError>
+pub fn sfixed32<'a, I>(bytes: I, field_name: &str) -> Result<i32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     fixed32(bytes, field_name).map(|u| u as i32)
 }
 
-pub fn sfixed64<'a, I>(mut bytes: I, field_name: &str) -> Result<i64, DecodeError>
+pub fn sfixed64<'a, I>(bytes: I, field_name: &str) -> Result<i64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     fixed64(bytes, field_name).map(|u| u as i64)
 }
 
-pub fn float<'a, I>(mut bytes: I, field_name: &str) -> Result<f32, DecodeError>
+pub fn float<'a, I>(mut bytes: I, _field_name: &str) -> Result<f32, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let mut buf = [0 as u8; 32/8];
     for i in 0..32/8 {
@@ -264,7 +264,7 @@ where I: Iterator<Item = &'a u8> {
     Ok(f32::from_le_bytes(buf))
 }
 
-pub fn double<'a, I>(mut bytes: I, field_name: &str) -> Result<f64, DecodeError>
+pub fn double<'a, I>(mut bytes: I, _field_name: &str) -> Result<f64, DecodeError>
 where I: Iterator<Item = &'a u8> {
     let mut buf = [0 as u8; 64/8];
     for i in 0..64/8 {
@@ -277,7 +277,7 @@ where I: Iterator<Item = &'a u8> {
     Ok(f64::from_le_bytes(buf))
 }
 
-pub fn bool<'a, I>(mut bytes: I, field_name: &str) -> Result<bool, DecodeError>
+pub fn bool<'a, I>(mut bytes: I, _field_name: &str) -> Result<bool, DecodeError>
 where I: Iterator<Item = &'a u8> {
     match bytes.next() {
         Some(byte) => Ok(*byte & 1 != 0),
@@ -297,9 +297,9 @@ where I: Iterator<Item = &'a u8> {
     }
 
     let mut strbuf = heapless::Vec::<u8, SIZE>::new();
-    for i in 0..bufsize as usize {
-        let mut byte = match bytes.next() {
-            Some(byte) => strbuf.push(*byte),
+    for _ in 0..bufsize as usize {
+        match bytes.next() {
+            Some(byte) => strbuf.push(*byte).map_err(|_| DecodeError::UnexpectedEndOfBuffer)?,
             None => return Err(DecodeError::UnexpectedEndOfBuffer),
         };
     }
