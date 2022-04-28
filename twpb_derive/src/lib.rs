@@ -279,7 +279,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             a.extend(quote!{
                 println!("testing for embedded message match '{}::{}' [{}] = '{}'", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers), stringify!(#field_type));
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
-                    let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
+                    let bufsize = ::twpb::decoder::leb128_u32(&mut bytes)?;
                     println!("embedded message match with size {}", bufsize);
                     let iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
                     let value = #struct_name::#field_name(#field_type::twpb_decode_iter(iterator)?);
@@ -287,7 +287,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 }
             });
         } else {
-            let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());
+            let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
             a.extend(quote!{
                 println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
@@ -295,7 +295,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     // let value = ::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?;
                     // result.#field_name = #struct_name(value);
                     // return Ok(#struct_name::test(::heapless::String::from("ha")));
-                    let value = #struct_name::#field_name(::twpb::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
+                    let value = #struct_name::#field_name(::twpb::decoder::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
                     return Ok(value);
                 }
             });
@@ -305,21 +305,21 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     // println!("enum fields {:?}", fields);
     Ok(TokenStream::from(quote!{
         impl #struct_name {
-            pub fn twpb_decode<'a, I>(field_number: u32, wire_type: u8, mut bytes: I, field_name: &str) -> Result<#struct_name, ::twpb::DecodeError>
+            pub fn twpb_decode<'a, I>(field_number: u32, wire_type: u8, mut bytes: I, field_name: &str) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = &'a u8> {
                 println!("decoding proto {}", stringify!(#struct_name));
 
                 #q
 
-                // let result = match ::twpb::decode_tag(&mut bytes) {
+                // let result = match ::twpb::decoder::tag(&mut bytes) {
                 //     Ok((field_number, wire_type)) => {
                         println!("got field nr {}", field_number);
                         println!("got wire type {}", wire_type);
                         #a
-                        return Err(::twpb::DecodeError::UnexpectedEndOfBuffer);
+                        return Err(::twpb::decoder::DecodeError::UnexpectedEndOfBuffer);
                         // return Ok(result);
                 //     },
-                //     // Err(::twpb::DecodeError::EmptyBuffer) => break, // this only applies to message, not oneof
+                //     // Err(::twpb::decoder::DecodeError::EmptyBuffer) => break, // this only applies to message, not oneof
                 //     Err(e) => return Err(e),
                 // };
                 // result
@@ -410,7 +410,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             panic!("encountered embedded message for {}, {}", field_name, proto_type);
 
         } else {
-            let parse_fn = Ident::new(&format!("decode_{}", &proto_type), Span::call_site());
+            let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
             if field.repeated {
                 a.extend(quote!{
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
@@ -418,18 +418,18 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                         // packed repeated field
                         // 'string' and 'bytes' are never packed, because their non-repeated encoding is already the same as packed repeated encoding
                         if wire_type == ::twpb::WireTypes::LengthDelimited && #proto_type != "string" && #proto_type != "bytes" {
-                            let bufsize = ::twpb::decode_leb128_u32(&mut bytes)?;
+                            let bufsize = ::twpb::decoder::leb128_u32(&mut bytes)?;
                             let mut iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
                             loop {
-                                match ::twpb::#parse_fn(&mut iterator, stringify!(#field_name)) {
+                                match ::twpb::decoder::#parse_fn(&mut iterator, stringify!(#field_name)) {
                                     Ok(value) => result.#field_name.push(value),
-                                    Err(::twpb::DecodeError::EmptyBuffer) => break,
+                                    Err(::twpb::decoder::DecodeError::EmptyBuffer) => break,
                                     Err(e) => return Err(e),
                                 };
                             }
                         // non-packed repeated field
                         } else {
-                            let value = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
+                            let value = ::twpb::decoder::#parse_fn(&mut bytes, stringify!(#field_name))?;
                             result.#field_name.push(value);
                         }
                     }
@@ -439,7 +439,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
                         fieldMatch = true;
                         println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
-                        result.#field_name = ::twpb::#parse_fn(&mut bytes, stringify!(#field_name))?;
+                        result.#field_name = ::twpb::decoder::#parse_fn(&mut bytes, stringify!(#field_name))?;
                     }
                 });
             }
@@ -462,11 +462,11 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     Ok(TokenStream::from(quote!{
         impl #struct_name {
-            pub fn twpb_decode(buf: &[u8]) -> Result<#struct_name, ::twpb::DecodeError> {
+            pub fn twpb_decode(buf: &[u8]) -> Result<#struct_name, ::twpb::decoder::DecodeError> {
                 #struct_name::twpb_decode_iter(buf.iter())
             }
 
-            pub fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::DecodeError>
+            pub fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = &'a u8> {
                 println!("decoding proto {}", stringify!(#struct_name));
                 let mut result = #struct_name::default();
@@ -477,18 +477,18 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 // which consists of the field type and the wire type.
                 // As long as keys keep being encountered in the buffer, read said keys and values.
                 loop {
-                    match ::twpb::decode_tag(&mut bytes) {
+                    match ::twpb::decoder::tag(&mut bytes) {
                         Ok((field_number, wire_type)) => {
                             println!("got field nr {}", field_number);
                             println!("got wire type {}", wire_type);
                             let mut fieldMatch = false;
                             #a
                             if !fieldMatch {
-                                ::twpb::decode_unknown(&mut bytes, wire_type)?;
+                                ::twpb::decoder::unknown(&mut bytes, wire_type)?;
                             }
                             // return Ok(result);
                         },
-                        Err(::twpb::DecodeError::EmptyBuffer) => break,
+                        Err(::twpb::decoder::DecodeError::EmptyBuffer) => break,
                         Err(e) => return Err(e),
                     }
                 }
