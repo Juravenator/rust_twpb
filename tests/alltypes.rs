@@ -3,7 +3,7 @@ mod types;
 use types::{SimpleTypes, RepeatedTypes};
 
 #[test]
-fn test_types(){
+fn test_types_decode(){
     let dummydata = include_bytes!("files/bin/python.types.simple.bin");
 
     let parsed = SimpleTypes::twpb_decode_iter(dummydata.iter()).unwrap();
@@ -29,7 +29,7 @@ fn test_types(){
 }
 
 #[test]
-fn test_types_repeated(){
+fn test_types_repeated_decode(){
     let dummydata = include_bytes!("files/bin/python.types.repeated.bin");
 
     let parsed = RepeatedTypes::twpb_decode_iter(dummydata.iter()).unwrap();

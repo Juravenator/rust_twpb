@@ -213,10 +213,10 @@ where I: Iterator<Item = &'a u8> {
 
 pub fn fixed32<'a, I>(mut bytes: I, _field_name: &str) -> Result<u32, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    const size: usize = (u32::BITS/8) as usize;
+    const SIZE: usize = (u32::BITS/8) as usize;
 
-    let mut slice: [u8; size] = Default::default();
-    for i in 0..size {
+    let mut slice: [u8; SIZE] = Default::default();
+    for i in 0..SIZE {
         if let Some(byte) = bytes.next() {
             slice[i] = *byte
         } else if i == 0 {
@@ -230,10 +230,10 @@ where I: Iterator<Item = &'a u8> {
 
 pub fn fixed64<'a, I>(mut bytes: I, _field_name: &str) -> Result<u64, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    const size: usize = (u64::BITS/8) as usize;
+    const SIZE: usize = (u64::BITS/8) as usize;
 
-    let mut slice: [u8; size] = Default::default();
-    for i in 0..size {
+    let mut slice: [u8; SIZE] = Default::default();
+    for i in 0..SIZE {
         if let Some(byte) = bytes.next() {
             slice[i] = *byte
         } else if i == 0 {

@@ -1,6 +1,7 @@
 // re-exporting whole modules
 pub mod iterators;
 pub mod wiretypes;
+pub mod encoder;
 pub mod decoder;
 
 // re-exporting specific pieces of modules for convenient shorter-hand access
