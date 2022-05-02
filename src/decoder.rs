@@ -213,32 +213,36 @@ where I: Iterator<Item = &'a u8> {
 
 pub fn fixed32<'a, I>(mut bytes: I, _field_name: &str) -> Result<u32, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    let mut value: u32 = 0;
-    for i in 0..32/8 {
+    const size: usize = (u32::BITS/8) as usize;
+
+    let mut slice: [u8; size] = Default::default();
+    for i in 0..size {
         if let Some(byte) = bytes.next() {
-            value |= (*byte as u32) << (8*i);
+            slice[i] = *byte
         } else if i == 0 {
             return Err(DecodeError::EmptyBuffer{});
         } else {
             return Err(DecodeError::UnexpectedEndOfBuffer{});
         }
     }
-    Ok(value)
+    Ok(u32::from_le_bytes(slice))
 }
 
 pub fn fixed64<'a, I>(mut bytes: I, _field_name: &str) -> Result<u64, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    let mut value: u64 = 0;
-    for i in 0..64/8 {
+    const size: usize = (u64::BITS/8) as usize;
+
+    let mut slice: [u8; size] = Default::default();
+    for i in 0..size {
         if let Some(byte) = bytes.next() {
-            value |= (*byte as u64) << (8*i);
+            slice[i] = *byte
         } else if i == 0 {
             return Err(DecodeError::EmptyBuffer{});
         } else {
             return Err(DecodeError::UnexpectedEndOfBuffer{});
         }
     }
-    Ok(value)
+    Ok(u64::from_le_bytes(slice))
 }
 
 pub fn sfixed32<'a, I>(bytes: I, field_name: &str) -> Result<i32, DecodeError>
