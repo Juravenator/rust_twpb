@@ -1,6 +1,8 @@
 mod types;
+mod wiretypes;
 
 use types::*;
+use wiretypes::wire_types;
 
 extern crate proc_macro;
 extern crate proc_macro2;
@@ -20,7 +22,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     let input: DeriveInput = syn::parse(tokens)?;
 
     let struct_name = input.ident;
-    println!("derive enum {}", struct_name);
+    // println!("derive enum {}", struct_name);
 
     let variants = match input.data {
         Data::Enum(DataEnum{variants, ..}) => variants,
@@ -30,28 +32,28 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     let mut debugmsg = quote!();
     let mut decodecode = quote!();
     for variant in variants {
-        println!("variant {}", variant.ident);
+        // println!("variant {}", variant.ident);
 
         let field = ParsedVariant::parse(variant)?;
         let field_name = field.field_name;
         let proto_type = field.proto_type;
         let field_type = field.field_type;
         let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
-        println!("'{}' of type {:?} has field numbers {:?}", 
-            field_name, proto_type, field.field_numbers);
+        // println!("'{}' of type {:?} has field numbers {:?}", 
+        //     field_name, proto_type, field.field_numbers);
         debugmsg.extend(quote!{
-            println!("Dealing with variant '{}::{}' ({}) at field numbers [{}]",
-                stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
+            // println!("Dealing with variant '{}::{}' ({}) at field numbers [{}]",
+            //     stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
         });
 
         if proto_type == "oneof" {
             panic!("nested oneof unimplemented")
         } else if proto_type == "message" {
             decodecode.extend(quote!{
-                println!("testing for embedded message match '{}::{}' [{}] = '{}'", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers), stringify!(#field_type));
+                // println!("testing for embedded message match '{}::{}' [{}] = '{}'", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers), stringify!(#field_type));
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
                     let bufsize = ::twpb::decoder::leb128_u32(&mut bytes)?;
-                    println!("embedded message match with size {}", bufsize);
+                    // println!("embedded message match with size {}", bufsize);
                     let iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
                     let value = #struct_name::#field_name(#field_type::twpb_decode_iter(iterator)?);
                     return Ok(value);
@@ -60,9 +62,9 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         } else {
             let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
             decodecode.extend(quote!{
-                println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
+                // println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
-                    println!("enum variant match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
+                    // println!("enum variant match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                     let value = #struct_name::#field_name(::twpb::decoder::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
                     return Ok(value);
                 }
@@ -74,12 +76,12 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         impl #struct_name {
             pub fn twpb_decode<'a, I>(field_number: u32, wire_type: u8, mut bytes: I, field_name: &str) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = &'a u8> {
-                println!("decoding proto {}", stringify!(#struct_name));
+                // println!("decoding proto {}", stringify!(#struct_name));
 
                 #debugmsg
 
-                println!("got field nr {}", field_number);
-                println!("got wire type {}", wire_type);
+                // println!("got field nr {}", field_number);
+                // println!("got wire type {}", wire_type);
 
                 #decodecode
 
@@ -120,21 +122,23 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     let mut allocatecode = quote!();
     let mut decodecode = quote!();
+    let mut encodecode = quote!();
     for field in fields {
-        println!("'{}::{:?}' of type {:?} has field numbers {:?}",
-            struct_name, field.field_name, field.proto_type, field.field_numbers);
+        // println!("'{}::{:?}' of type {:?} has field numbers {:?}",
+        //     struct_name, field.field_name, field.proto_type, field.field_numbers);
 
         let field_name = field.field_name;
         let proto_type = field.proto_type;
         let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
-        allocatecode.extend(quote!{
-            println!("Dealing with '{}::{}' ({}) at field numbers [{}]",
-                stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
-        });
+        let first_field_number = field.field_numbers[0];
+        // allocatecode.extend(quote!{
+        //     // println!("Dealing with '{}::{}' ({}) at field numbers [{}]",
+        //     //     stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
+        // });
         if field.repeated {
             allocatecode.extend(quote!{
                 result.#field_name = ::heapless::Vec::new();
-            })
+            });
         }
 
         if proto_type == "oneof" {
@@ -156,12 +160,12 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             // There can be only one
             let optionarg = &optionarg[0];
 
-            println!("message encountered enum for {:?}", optionarg);
+            // println!("message encountered enum for {:?}", optionarg);
             decodecode.extend(quote!{
                 if vec![#field_numbers].iter().any(|&i| i == field_number) {
                     fieldMatch = true;
-                    println!("parsing enum field of type '{}'", stringify!(#optionarg));
-                    println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
+                    // println!("parsing enum field of type '{}'", stringify!(#optionarg));
+                    // println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                     result.#field_name = #optionarg::twpb_decode(field_number, wire_type, &mut bytes, stringify!(#field_name)).ok();
                 }
             });
@@ -171,6 +175,42 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
         } else {
             let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
+
+            let wire_type = wire_types::for_proto_type(proto_type.as_ref())
+                .unwrap_or_else(|| panic!("unknown wire type for proto type '{}'", proto_type));
+
+            // if the value is a repeated field, we need to iterate over the values
+            if field.repeated {
+                // Repeated fields can be encoded in packed or non-packed mode.
+                // Packed repeated fields consists of length delimited tag followed by
+                // all values one after another.
+                // Non-packed repeated fields are just like non-repeated fields,
+                // i.e. a tag and a value, except the same tag keeps getting
+                // repeated for each instance
+                //
+                // Packed repeated fields are problematic, we need to know the size beforehand
+                // which makes a streaming writer model more tricky and in need of
+                // unbound temporary buffers.
+                // Therefore, we will always send non-packed repeated fields.
+                //
+                // The spec allows this: Protocol buffer parsers must be able to parse
+                // repeated fields that were compiled as packed as if they were not packed,
+                // and vice versa. This permits adding [packed=true] to existing fields in a
+                // forward- and backward-compatible way.
+                encodecode.extend(quote!{
+                    for val in self.#field_name.iter() {
+                        ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
+                        bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, val)?;
+                    }
+                });
+            // non-repeated field -> just write the value
+            } else {
+                encodecode.extend(quote!{
+                    ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
+                    bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, &self.#field_name)?;
+                });
+            }
+
             if field.repeated {
                 decodecode.extend(quote!{
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
@@ -198,7 +238,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 decodecode.extend(quote!{
                     if vec![#field_numbers].iter().any(|&i| i == field_number) {
                         fieldMatch = true;
-                        println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
+                        // println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                         result.#field_name = ::twpb::decoder::#parse_fn(&mut bytes, stringify!(#field_name))?;
                     }
                 });
@@ -214,7 +254,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
             pub fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = &'a u8> {
-                println!("decoding proto {}", stringify!(#struct_name));
+                // println!("decoding proto {}", stringify!(#struct_name));
                 let mut result = #struct_name::default();
 
                 #allocatecode
@@ -225,8 +265,8 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 loop {
                     match ::twpb::decoder::tag(&mut bytes) {
                         Ok((field_number, wire_type)) => {
-                            println!("got field nr {}", field_number);
-                            println!("got wire type {}", wire_type);
+                            // println!("got field nr {}", field_number);
+                            // println!("got wire type {}", wire_type);
                             let mut fieldMatch = false;
                             #decodecode
                             if !fieldMatch {
@@ -238,6 +278,12 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     }
                 }
                 Ok(result)
+            }
+
+            pub fn twpb_encode(&self, mut buffer: impl std::io::Write) -> Result<usize, ::twpb::encoder::EncodeError> {
+                let mut bytes_written = 0;
+                #encodecode
+                Ok(bytes_written)
             }
         }
     }))

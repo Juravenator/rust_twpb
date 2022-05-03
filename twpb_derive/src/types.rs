@@ -38,7 +38,7 @@ impl ParsedVariant {
 
         let twpb_attr: Vec<_> = field.attrs
             .into_iter()
-            .filter(|a| {println!("path {:?}", a.path);a.path.is_ident("twpb")})
+            .filter(|a| a.path.is_ident("twpb"))
             .collect();
 
         let twpb_attr = match twpb_attr.len() {

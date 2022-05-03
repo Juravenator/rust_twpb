@@ -2,7 +2,7 @@ use core::str::FromStr;
 
 use crate::wiretypes::wire_types;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum DecodeError {
     EmptyBuffer,
     UnexpectedEndOfBuffer,
@@ -27,12 +27,12 @@ where I: Iterator<Item = &'a u8> {
     // We keep the 7-bit chunks in an 8-bit byte, this is not a problem,
     // during re-assembly we XOR anyways
     while last_encountered_msb {
-        println!("getting varint byte");
+        // println!("getting varint byte");
         // As long as last MSB == 1, we need to read in more bytes
         if let Some(byte) = bytes.next() {
-            println!("varint byte {:X}", byte);
+            // println!("varint byte {:X}", byte);
             last_encountered_msb = byte & 0x80 != 0;
-            println!("MSB {:?}", last_encountered_msb);
+            // println!("MSB {:?}", last_encountered_msb);
             // push() returns to sender if the vec capacity has been exceeded
             if let Err(_) = tag_bytes.push(byte & 0x7F) {
                 return Err(DecodeError::TooLargeVarint{});
@@ -108,11 +108,11 @@ where I: Iterator<Item = &'a u8> {
 
 pub fn string<'a, const SIZE: usize, I>(mut bytes: I, field_name: &str) -> Result<heapless::String<SIZE>, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    println!("decoding string of max size {}", SIZE);
+    // println!("decoding string of max size {}", SIZE);
 
     let bufsize = leb128_u32(&mut bytes)?;
 
-    println!("string in protobuf is size {}", bufsize);
+    // println!("string in protobuf is size {}", bufsize);
     if bufsize > (SIZE as u32) {
         return Err(DecodeError::FieldOverflow(field_name.to_string()))
     }
@@ -291,11 +291,11 @@ where I: Iterator<Item = &'a u8> {
 
 pub fn bytes<'a, const SIZE: usize, I>(mut bytes: I, field_name: &str) -> Result<heapless::Vec<u8, SIZE>, DecodeError>
 where I: Iterator<Item = &'a u8> {
-    println!("decoding bytes of max size {}", SIZE);
+    // println!("decoding bytes of max size {}", SIZE);
 
     let bufsize = leb128_u32(&mut bytes)?;
 
-    println!("bytes in protobuf is size {}", bufsize);
+    // println!("bytes in protobuf is size {}", bufsize);
     if bufsize > (SIZE as u32) {
         return Err(DecodeError::FieldOverflow(field_name.to_string()))
     }
