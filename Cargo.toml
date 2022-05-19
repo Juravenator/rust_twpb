@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 twpb_derive = { path = "twpb_derive" }
 heapless = "0.7.10"
+bytes = "1.1.0"
