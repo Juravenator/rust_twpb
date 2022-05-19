@@ -14,7 +14,12 @@ fn test_simple(){
         product: heapless::String::from("product"),
     };
     assert_eq!(parsed, expected);
-    println!("{:?}", parsed);
+
+    let mut dummydata = Vec::<u8>::new();
+    let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
+    assert_eq!(bytes_written, dummydata.len());
+    let parsed = Simple::twpb_decode_iter(dummydata.iter()).unwrap();
+    assert_eq!(parsed, expected);
 }
 
 #[test]
@@ -27,7 +32,12 @@ fn test_oneof_simple(){
         something_else: heapless::String::from(""),
     };
     assert_eq!(parsed, expected);
-    println!("{:?}", parsed);
+
+    let mut dummydata = Vec::<u8>::new();
+    let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
+    assert_eq!(bytes_written, dummydata.len());
+    let parsed = Embedded::twpb_decode_iter(dummydata.iter()).unwrap();
+    assert_eq!(parsed, expected);
 }
 
 #[test]

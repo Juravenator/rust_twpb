@@ -32,7 +32,7 @@ fn test_types(){
     let mut dummydata = Vec::<u8>::new();
 
     let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
-    assert_eq!(bytes_written, 71);
+    assert_eq!(bytes_written, dummydata.len());
     assert_eq!(dummydata, [
         0x08, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x01, 0x10, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
@@ -75,13 +75,12 @@ fn test_types_repeated_decode(){
         ]).unwrap(),
     };
     assert_eq!(parsed, expected);
-    println!("{:?}", parsed);
 
     // Now that we verified decoding works, encode and decode some data and check if it matches
     // Note that we can't encode and check for binary match with external data. Order is not guaranteed.
     let mut dummydata = Vec::<u8>::new();
     let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
-    assert_eq!(bytes_written, 142);
+    assert_eq!(bytes_written, dummydata.len());
     assert_eq!(dummydata, [
         0x08, 0x04, 0x08, 0xD4, 0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0x01, 0x10, 0x45, 0x10, 0xBB, 0xFF, 0xFF, 0xFF,

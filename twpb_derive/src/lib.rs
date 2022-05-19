@@ -31,6 +31,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     let mut debugmsg = quote!();
     let mut decodecode = quote!();
+    let mut encodecode = quote!();
     for variant in variants {
         // println!("variant {}", variant.ident);
 
@@ -39,6 +40,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         let proto_type = field.proto_type;
         let field_type = field.field_type;
         let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
+        let first_field_number = field.field_numbers[0];
         // println!("'{}' of type {:?} has field numbers {:?}", 
         //     field_name, proto_type, field.field_numbers);
         debugmsg.extend(quote!{
@@ -59,6 +61,18 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     return Ok(value);
                 }
             });
+            encodecode.extend(quote!{
+                #struct_name::#field_name(c) => {
+                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &::twpb::wire_types::LENGTHDELIMITED)?;
+                    // We need to send the payload size first.
+                    // So serialize twice, once to a nil buffer just to count bytes
+                    let mut nullbuffer = ::twpb::iterators::NullCounterBuffer::new();
+                    let len = c.twpb_encode(&mut nullbuffer)?;
+                    bytes_written += ::twpb::encoder::leb128_u32(&mut buffer, &(len as u32))?;
+                    // second time to actually send data
+                    bytes_written += c.twpb_encode(&mut buffer)?;
+                },
+            });
         } else {
             let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
             decodecode.extend(quote!{
@@ -68,6 +82,14 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                     let value = #struct_name::#field_name(::twpb::decoder::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
                     return Ok(value);
                 }
+            });
+            let wire_type = wire_types::for_proto_type(proto_type.as_ref())
+                .unwrap_or_else(|| panic!("unknown wire type for proto type '{}'", proto_type));
+            encodecode.extend(quote!{
+                #struct_name::#field_name(c) => {
+                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
+                    bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, c)?;
+                },
             });
         }
     }
@@ -86,6 +108,14 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 #decodecode
 
                 return Err(::twpb::decoder::DecodeError::UnexpectedEndOfBuffer);
+            }
+
+            pub fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
+                let mut bytes_written = 0;
+                match &self {
+                    #encodecode
+                };
+                Ok(bytes_written)
             }
         }
     }))
@@ -170,6 +200,12 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 }
             });
 
+            encodecode.extend(quote!{
+                if let Some(value) = self.#field_name.as_ref() {
+                    bytes_written += value.twpb_encode(&mut buffer)?;
+                }
+            })
+
         } else if proto_type == "message" {
             panic!("encountered embedded message for {}, {}", field_name, proto_type);
 
@@ -199,14 +235,14 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 // forward- and backward-compatible way.
                 encodecode.extend(quote!{
                     for val in self.#field_name.iter() {
-                        ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
+                        bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
                         bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, val)?;
                     }
                 });
             // non-repeated field -> just write the value
             } else {
                 encodecode.extend(quote!{
-                    ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
+                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
                     bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, &self.#field_name)?;
                 });
             }
@@ -280,7 +316,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 Ok(result)
             }
 
-            pub fn twpb_encode(&self, mut buffer: impl std::io::Write) -> Result<usize, ::twpb::encoder::EncodeError> {
+            pub fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
                 let mut bytes_written = 0;
                 #encodecode
                 Ok(bytes_written)

@@ -54,6 +54,6 @@ fn test_repeated_encode_one_element(){
     };
     let mut dummydata = Vec::<u8>::new();
     let bytes_written = source.twpb_encode(&mut dummydata).unwrap();
-    assert_eq!(bytes_written, 2);
+    assert_eq!(bytes_written, 4);
     assert_eq!(dummydata, [0x68, 0x01, 0x68, 0x00]);
 }

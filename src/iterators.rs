@@ -1,3 +1,4 @@
+use bytes::{BufMut, buf::UninitSlice};
 
 pub struct LimitedIterator<'a, 'b, I> where I: Iterator<Item = &'b u8> {
     source_iterator: &'a mut I,
@@ -24,5 +25,33 @@ impl<'a, 'b, I> Iterator for LimitedIterator<'a, 'b, I> where I: Iterator<Item =
         } else {
             None
         }
+    }
+}
+
+pub struct NullCounterBuffer {
+    current_index: usize
+}
+
+impl NullCounterBuffer {
+    pub fn new() -> Self {
+        NullCounterBuffer{current_index: 0}
+    }
+}
+
+unsafe impl BufMut for NullCounterBuffer {
+    fn remaining_mut(&self) -> usize {
+        usize::MAX
+    }
+
+    unsafe fn advance_mut(&mut self, cnt: usize) {
+        self.current_index += cnt;
+    }
+
+    fn chunk_mut(&mut self) -> &mut UninitSlice {
+        let buf = heapless::Vec::<u8, 10>::new();
+        let ptr = buf.as_ptr() as *mut _;
+        let len = buf.len();
+        let slice = unsafe { UninitSlice::from_raw_parts_mut(ptr, len) };
+        slice
     }
 }
