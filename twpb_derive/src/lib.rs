@@ -109,8 +109,9 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
                 return Err(::twpb::decoder::DecodeError::UnexpectedEndOfBuffer);
             }
-
-            pub fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
+        }
+        impl ::twpb::MessageEncoder for #struct_name {
+            fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
                 let mut bytes_written = 0;
                 match &self {
                     #encodecode
@@ -283,12 +284,8 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     }
 
     Ok(TokenStream::from(quote!{
-        impl #struct_name {
-            pub fn twpb_decode(buf: &[u8]) -> Result<#struct_name, ::twpb::decoder::DecodeError> {
-                #struct_name::twpb_decode_iter(buf.iter())
-            }
-
-            pub fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
+        impl ::twpb::MessageDecoder for #struct_name {
+            fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = &'a u8> {
                 // println!("decoding proto {}", stringify!(#struct_name));
                 let mut result = #struct_name::default();
@@ -315,8 +312,9 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 }
                 Ok(result)
             }
-
-            pub fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
+        }
+        impl ::twpb::MessageEncoder for #struct_name {
+            fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
                 let mut bytes_written = 0;
                 #encodecode
                 Ok(bytes_written)

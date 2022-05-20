@@ -97,6 +97,8 @@ pub struct Embedded {
 }
 
 pub mod embedded {
+    use ::twpb::{MessageDecoder};
+
     #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
     pub enum Content {
         #[twpb(message,nr=1)]
@@ -113,6 +115,8 @@ pub struct APIMessage {
 }
 
 pub mod apimessage {
+    use ::twpb::{MessageDecoder};
+
     #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
     pub enum Content {
         #[twpb(message,nr=1)]
@@ -157,6 +161,8 @@ pub mod v1 {
     }
 
     pub mod request {
+        use ::twpb::{MessageDecoder};
+
         #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
         pub enum Request {
             #[twpb(message,nr=1)]
@@ -167,6 +173,8 @@ pub mod v1 {
     }
 
     pub mod response {
+        use ::twpb::{MessageDecoder};
+
         #[derive(PartialEq, Debug, ::twpb_derive::Enum)]
         pub enum Response {
             #[twpb(message,nr=1)]

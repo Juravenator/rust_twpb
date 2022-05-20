@@ -1,6 +1,7 @@
 mod types;
 
 use types::{APIMessage, apimessage, v1};
+use twpb::{MessageDecoder};
 
 #[test] // We can successfully decode a getInfo API request
 fn test_get_info() {

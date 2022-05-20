@@ -1,6 +1,7 @@
 mod types;
 
 use types::RepeatedTypes;
+use twpb::{MessageEncoder};
 
 #[test]
 // A packed repeated field containing zero elements does not

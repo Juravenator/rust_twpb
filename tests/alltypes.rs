@@ -1,6 +1,7 @@
 mod types;
 
 use types::{SimpleTypes, RepeatedTypes};
+use twpb::{MessageEncoder, MessageDecoder};
 
 #[test]
 fn test_types(){

@@ -1,6 +1,7 @@
 mod types;
 
 use types::{Simple, Embedded, embedded};
+use twpb::{MessageEncoder, MessageDecoder};
 
 #[test]
 fn test_simple(){
