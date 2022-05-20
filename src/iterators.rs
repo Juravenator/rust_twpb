@@ -48,9 +48,10 @@ unsafe impl BufMut for NullCounterBuffer {
     }
 
     fn chunk_mut(&mut self) -> &mut UninitSlice {
+        // TODO check safeness. are we later writing to random locations in stack?
         let buf = heapless::Vec::<u8, 10>::new();
         let ptr = buf.as_ptr() as *mut _;
-        let len = buf.len();
+        let len = buf.capacity();
         let slice = unsafe { UninitSlice::from_raw_parts_mut(ptr, len) };
         slice
     }
