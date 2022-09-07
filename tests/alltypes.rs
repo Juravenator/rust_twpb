@@ -9,7 +9,7 @@ fn test_types(){
     // is correctly parsed by us
     let dummydata = include_bytes!("files/bin/python.types.simple.bin");
 
-    let parsed = SimpleTypes::twpb_decode_iter(dummydata.iter()).unwrap();
+    let parsed = SimpleTypes::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     let expected = SimpleTypes {
         int32: -69,
         int64: -9223372036854775808,
@@ -30,11 +30,10 @@ fn test_types(){
     assert_eq!(parsed, expected);
     // Now that we verified decoding works, encode and decode some data and check if it matches
     // Note that we can't encode and check for binary match with external data. Order is not guaranteed.
-    let mut dummydata = Vec::<u8>::new();
+    let mut dummydata = [0x0; 1000];
 
-    let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
-    assert_eq!(bytes_written, dummydata.len());
-    assert_eq!(dummydata, [
+    let bytes_written = expected.twpb_encode(&mut dummydata.as_mut()).unwrap();
+    let expected_bytes = [
         0x08, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x01, 0x10, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
         0x80, 0x01, 0x18, 0x2A, 0x20, 0x01, 0x28, 0x89, 0x01, 0x30,
@@ -44,8 +43,10 @@ fn test_types(){
         0x59, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF0, 0x3F, 0x65,
         0xDB, 0x0F, 0x49, 0x40, 0x68, 0x01, 0x72, 0x04, 0xF0, 0x9F,
         0x90, 0x89, 0x7A, 0x04, 0x41, 0x53, 0x44, 0x46,
-    ]);
-    let parsed = SimpleTypes::twpb_decode_iter(dummydata.iter()).unwrap();
+    ];
+    assert_eq!(bytes_written, expected_bytes.len());
+    assert_eq!(dummydata[0..bytes_written], expected_bytes);
+    let parsed = SimpleTypes::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     assert_eq!(parsed, expected);
 }
 
@@ -53,7 +54,7 @@ fn test_types(){
 fn test_types_repeated_decode(){
     let dummydata = include_bytes!("files/bin/python.types.repeated.bin");
 
-    let parsed = RepeatedTypes::twpb_decode_iter(dummydata.iter()).unwrap();
+    let parsed = RepeatedTypes::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     let expected = RepeatedTypes {
         int32: heapless::Vec::from_slice(&[4, -300]).unwrap(),
         int32_notpacked: heapless::Vec::from_slice(&[4, -300]).unwrap(),
@@ -79,10 +80,9 @@ fn test_types_repeated_decode(){
 
     // Now that we verified decoding works, encode and decode some data and check if it matches
     // Note that we can't encode and check for binary match with external data. Order is not guaranteed.
-    let mut dummydata = Vec::<u8>::new();
-    let bytes_written = expected.twpb_encode(&mut dummydata).unwrap();
-    assert_eq!(bytes_written, dummydata.len());
-    assert_eq!(dummydata, [
+    let mut dummydata = [0x0; 1000];
+    let bytes_written = expected.twpb_encode(&mut dummydata.as_mut()).unwrap();
+    let expected_bytes = [
         0x08, 0x04, 0x08, 0xD4, 0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0x01, 0x10, 0x45, 0x10, 0xBB, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01, 0x18, 0x2A, 0x18, 0xA4,
@@ -101,7 +101,9 @@ fn test_types_repeated_decode(){
         0xE0, 0xA5, 0x87, 0x7A, 0x04, 0x41, 0x53, 0x44, 0x46, 0x7A,
         0x04, 0x41, 0x42, 0x43, 0x44, 0x80, 0x01, 0x04, 0x80, 0x01,
         0xD4, 0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x01,
-    ]);
+    ];
+    assert_eq!(bytes_written, expected_bytes.len());
+    assert_eq!(dummydata[0..bytes_written], expected_bytes);
     let parsed = RepeatedTypes::twpb_decode(&dummydata).unwrap();
     assert_eq!(parsed, expected);
 }

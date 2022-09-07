@@ -1,13 +1,13 @@
-use bytes::{BufMut, buf::UninitSlice};
+use crate::traits::{Writer, WriterError};
 
-pub struct LimitedIterator<'a, 'b, I> where I: Iterator<Item = &'b u8> {
-    source_iterator: &'a mut I,
+pub struct LimitedIterator<I> where I: Iterator<Item = u8> {
+    source_iterator: I,
     range: u32,
     current_index: u32,
 }
 
-impl<'a, 'b, I> LimitedIterator<'a, 'b, I> where I: Iterator<Item = &'b u8> {
-    pub fn new(source_iterator: &'a mut I, range: u32) -> Self {
+impl<I> LimitedIterator<I> where I: Iterator<Item = u8> {
+    pub fn new(source_iterator: I, range: u32) -> Self {
         LimitedIterator{
             source_iterator: source_iterator,
             range: range,
@@ -16,8 +16,8 @@ impl<'a, 'b, I> LimitedIterator<'a, 'b, I> where I: Iterator<Item = &'b u8> {
     }
 }
 
-impl<'a, 'b, I> Iterator for LimitedIterator<'a, 'b, I> where I: Iterator<Item = &'b u8> {
-    type Item = &'b u8;
+impl<I> Iterator for LimitedIterator<I> where I: Iterator<Item = u8> {
+    type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_index < self.range {
             self.current_index += 1;
@@ -38,21 +38,9 @@ impl NullCounterBuffer {
     }
 }
 
-unsafe impl BufMut for NullCounterBuffer {
-    fn remaining_mut(&self) -> usize {
-        usize::MAX
-    }
-
-    unsafe fn advance_mut(&mut self, cnt: usize) {
-        self.current_index += cnt;
-    }
-
-    fn chunk_mut(&mut self) -> &mut UninitSlice {
-        // TODO check safeness. are we later writing to random locations in stack?
-        let buf = heapless::Vec::<u8, 10>::new();
-        let ptr = buf.as_ptr() as *mut _;
-        let len = buf.capacity();
-        let slice = unsafe { UninitSlice::from_raw_parts_mut(ptr, len) };
-        slice
+impl Writer for NullCounterBuffer {
+    fn write(&mut self, _byte: u8) -> Result<(), WriterError> {
+        self.current_index += 1;
+        Ok(())
     }
 }

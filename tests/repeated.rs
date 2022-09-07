@@ -25,10 +25,10 @@ fn test_repeated_encode_zero_elements(){
         string: heapless::Vec::new(),
         bytes: heapless::Vec::new(),
     };
-    let mut dummydata = Vec::<u8>::new();
-    let bytes_written = source.twpb_encode(&mut dummydata).unwrap();
+    let mut buffer = [0x0; 100];
+    let bytes_written = source.twpb_encode(&mut buffer.as_mut()).unwrap();
     assert_eq!(bytes_written, 0);
-    assert_eq!(dummydata, []);
+    assert_eq!(buffer[0..bytes_written], []);
 }
 
 #[test]
@@ -53,8 +53,8 @@ fn test_repeated_encode_one_element(){
         string: heapless::Vec::new(),
         bytes: heapless::Vec::new(),
     };
-    let mut dummydata = Vec::<u8>::new();
-    let bytes_written = source.twpb_encode(&mut dummydata).unwrap();
+    let mut buffer = [0x0; 100];
+    let bytes_written = source.twpb_encode(&mut buffer.as_mut()).unwrap();
     assert_eq!(bytes_written, 4);
-    assert_eq!(dummydata, [0x68, 0x01, 0x68, 0x00]);
+    assert_eq!(buffer[0..bytes_written], [0x68, 0x01, 0x68, 0x00]);
 }

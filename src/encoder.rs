@@ -1,32 +1,20 @@
-use bytes::{Buf, BufMut};
+use crate::{traits::Writer, WriterError};
 
-#[derive(Debug, PartialEq)]
-pub enum EncodeError {
-    WriteError,
-    BufferTooSmallError,
-    OverflowError,
+#[allow(unused_mut)] // for signature consistency
+fn write_u8(bytes: &mut impl Writer, input: u8) -> Result<usize, WriterError> {
+    write(bytes, &[input])
 }
 
-fn write_u8(mut bytes: impl BufMut, input: u8) -> Result<usize, EncodeError> {
-    if !bytes.has_remaining_mut() {
-        return Err(EncodeError::BufferTooSmallError);
-    } else {
-        bytes.put_u8(input);
-        Ok(1)
+fn write(bytes: &mut impl Writer, input: &[u8]) -> Result<usize, WriterError> {
+    let mut len = 0;
+    for byte in input {
+        bytes.write(*byte)?;
+        len += 1;
     }
+    Ok(len)
 }
 
-fn write(mut bytes: impl BufMut, input: impl Buf) -> Result<usize, EncodeError> {
-    let len = input.remaining();
-    if bytes.remaining_mut() < len {
-        return Err(EncodeError::BufferTooSmallError);
-    } else {
-        bytes.put(input);
-        Ok(len)
-    }
-}
-
-pub fn leb128(mut bytes: impl BufMut, input: &u64) -> Result<usize, EncodeError> {
+pub fn leb128(bytes: &mut impl Writer, input: &u64) -> Result<usize, WriterError> {
     let mut bytes_written = 0;
     let mut input = *input; // make a cloned copy of readonly input
 
@@ -34,68 +22,68 @@ pub fn leb128(mut bytes: impl BufMut, input: &u64) -> Result<usize, EncodeError>
     // the 1st bit (MSB) denotes wether or not it is the last chunk (0) or not (1).
     // as long as our value to encode still needs the MSB, we are not at the last chunk
     while input >= 0x80 {
-        bytes_written += write_u8(&mut bytes, ((input & 0x7F) | 0x80) as u8)?;
+        bytes_written += write_u8(bytes, ((input & 0x7F) | 0x80) as u8)?;
         input >>= 7;
     }
 
     // Write our last chunk
-    bytes_written += write_u8(&mut bytes, (input & 0xFF) as u8)?;
+    bytes_written += write_u8(bytes, (input & 0xFF) as u8)?;
 
     Ok(bytes_written)
 }
 
-pub fn leb128_u32(bytes: impl BufMut, input: &u32) -> Result<usize, EncodeError> {
+pub fn leb128_u32(bytes: &mut impl Writer, input: &u32) -> Result<usize, WriterError> {
     leb128(bytes, &(*input as u64))
 }
 
-pub fn leb128_i64(bytes: impl BufMut, input: &i64) -> Result<usize, EncodeError> {
+pub fn leb128_i64(bytes: &mut impl Writer, input: &i64) -> Result<usize, WriterError> {
     leb128(bytes, &(*input as u64))
 }
 
-pub fn leb128_i32(bytes: impl BufMut, input: &i32) -> Result<usize, EncodeError> {
+pub fn leb128_i32(bytes: &mut impl Writer, input: &i32) -> Result<usize, WriterError> {
     leb128(bytes, &(*input as u64))
 }
 
-pub fn tag(bytes: impl BufMut, field_number: &u32, wire_type: &u8) -> Result<usize, EncodeError> {
+pub fn tag(bytes: &mut impl Writer, field_number: &u32, wire_type: &u8) -> Result<usize, WriterError> {
     // Wire type is specified using the 3 LSBs.
     // Field type is specified using the (32-3)=29 bits next to that.
     if (field_number & 0xE0_00_00_00) != 0 {
-        return Err(EncodeError::OverflowError);
+        return Err(WriterError::BufferOverflow);
     }
     if (wire_type & 0xF8) != 0 {
-        return Err(EncodeError::OverflowError);
+        return Err(WriterError::BufferOverflow);
     }
     leb128_u32(bytes, &(((*field_number << 3) & 0xFF_FF_FF_F8) | (*wire_type & 0b0111) as u32))
 }
 
-pub fn string<const SIZE: usize>(mut bytes: impl BufMut, input: &heapless::String<SIZE>) -> Result<usize, EncodeError> {
+pub fn string<const SIZE: usize>(bytes: &mut impl Writer, input: &heapless::String<SIZE>) -> Result<usize, WriterError> {
     let b = input.as_bytes();
     let mut bytes_written = 0;
 
     // Write the size bits
-    bytes_written += leb128_u32(&mut bytes, &(b.len() as u32))?;
+    bytes_written += leb128_u32(bytes, &(b.len() as u32))?;
 
     bytes_written += write(bytes, b)?;
     Ok(bytes_written)
 }
 
-pub fn int32(bytes: impl BufMut, input :&i32) -> Result<usize, EncodeError> {
+pub fn int32(bytes: &mut impl Writer, input :&i32) -> Result<usize, WriterError> {
     leb128_i32(bytes, input)
 }
 
-pub fn int64(bytes: impl BufMut, input :&i64) -> Result<usize, EncodeError> {
+pub fn int64(bytes: &mut impl Writer, input :&i64) -> Result<usize, WriterError> {
     leb128_i64(bytes, input)
 }
 
-pub fn uint32(bytes: impl BufMut, input :&u32) -> Result<usize, EncodeError> {
+pub fn uint32(bytes: &mut impl Writer, input :&u32) -> Result<usize, WriterError> {
     leb128_u32(bytes, input)
 }
 
-pub fn uint64(bytes: impl BufMut, input :&u64) -> Result<usize, EncodeError> {
+pub fn uint64(bytes: &mut impl Writer, input :&u64) -> Result<usize, WriterError> {
     leb128(bytes, input)
 }
 
-pub fn sint32(bytes: impl BufMut, input :&i32) -> Result<usize, EncodeError> {
+pub fn sint32(bytes: &mut impl Writer, input :&i32) -> Result<usize, WriterError> {
     // sint32/64 values are identical to their int32/64 counterparts, except that they
     // use ZigZag encoding to prevent negative numbers immediately taking up 10 bytes in leb128.
     // They do this by mapping low->high signed numbers to low->high unsigned numbers.
@@ -122,7 +110,7 @@ pub fn sint32(bytes: impl BufMut, input :&i32) -> Result<usize, EncodeError> {
     leb128_i32(bytes, &converted)
 }
 
-pub fn sint64(bytes: impl BufMut, input: &i64) -> Result<usize, EncodeError> {
+pub fn sint64(bytes: &mut impl Writer, input: &i64) -> Result<usize, WriterError> {
     // Same as sint32, but with 64 bit numbers
     let sign = (*input < 0) as i64;
     let converted = (*input << 1) ^ -sign;
@@ -130,38 +118,38 @@ pub fn sint64(bytes: impl BufMut, input: &i64) -> Result<usize, EncodeError> {
     leb128_i64(bytes, &converted)
 }
 
-pub fn fixed32(bytes: impl BufMut, input: &u32) -> Result<usize, EncodeError> {
+pub fn fixed32(bytes: &mut impl Writer, input: &u32) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn fixed64(bytes: impl BufMut, input: &u64) -> Result<usize, EncodeError> {
+pub fn fixed64(bytes: &mut impl Writer, input: &u64) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn sfixed32(bytes: impl BufMut, input: &i32) -> Result<usize, EncodeError> {
+pub fn sfixed32(bytes: &mut impl Writer, input: &i32) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn sfixed64(bytes: impl BufMut, input: &i64) -> Result<usize, EncodeError> {
+pub fn sfixed64(bytes: &mut impl Writer, input: &i64) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn float(bytes: impl BufMut, input: &f32) -> Result<usize, EncodeError> {
+pub fn float(bytes: &mut impl Writer, input: &f32) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn double(bytes: impl BufMut, input: &f64) -> Result<usize, EncodeError> {
+pub fn double(bytes: &mut impl Writer, input: &f64) -> Result<usize, WriterError> {
     write(bytes, &input.to_le_bytes()[..])
 }
 
-pub fn bool(bytes: impl BufMut, input: &bool) -> Result<usize, EncodeError> {
+pub fn bool(bytes: &mut impl Writer, input: &bool) -> Result<usize, WriterError> {
     write_u8(bytes, *input as u8)
 }
 
-pub fn bytes<const SIZE: usize>(mut bytes: impl BufMut, input: &heapless::Vec<u8, SIZE>) -> Result<usize, EncodeError> {
+pub fn bytes<const SIZE: usize>(bytes: &mut impl Writer, input: &heapless::Vec<u8, SIZE>) -> Result<usize, WriterError> {
     let mut bytes_written = 0;
     // Write the size bits
-    bytes_written += leb128_u32(&mut bytes, &(input.len() as u32))?;
+    bytes_written += leb128_u32(bytes, &(input.len() as u32))?;
 
     bytes_written += write(bytes, input.as_ref())?;
 

@@ -53,31 +53,33 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         } else if proto_type == "message" {
             decodecode.extend(quote!{
                 // println!("testing for embedded message match '{}::{}' [{}] = '{}'", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers), stringify!(#field_type));
-                if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                if [#field_numbers].iter().any(|&i| i == field_number) {
                     let bufsize = ::twpb::decoder::leb128_u32(&mut bytes)?;
                     // println!("embedded message match with size {}", bufsize);
-                    let iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
-                    let value = #struct_name::#field_name(#field_type::twpb_decode_iter(iterator)?);
+                    let mut iterator = ::twpb::LimitedIterator::new(&mut bytes, bufsize);
+                    let value = #struct_name::#field_name(#field_type::twpb_decode_iter(&mut iterator)?);
                     return Ok(value);
                 }
             });
             encodecode.extend(quote!{
                 #struct_name::#field_name(c) => {
-                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &::twpb::wire_types::LENGTHDELIMITED)?;
                     // We need to send the payload size first.
                     // So serialize twice, once to a nil buffer just to count bytes
                     let mut nullbuffer = ::twpb::iterators::NullCounterBuffer::new();
                     let len = c.twpb_encode(&mut nullbuffer)?;
-                    bytes_written += ::twpb::encoder::leb128_u32(&mut buffer, &(len as u32))?;
-                    // second time to actually send data
-                    bytes_written += c.twpb_encode(&mut buffer)?;
+                    if len != 0 {
+                        bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &::twpb::wire_types::LENGTHDELIMITED)?;
+                        bytes_written += ::twpb::encoder::leb128_u32(buffer, &(len as u32))?;
+                        // second time to actually send data
+                        bytes_written += c.twpb_encode(buffer)?;
+                    }
                 },
             });
         } else {
             let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
             decodecode.extend(quote!{
                 // println!("testing for match '{}::{}' [{}]", stringify!(#struct_name), stringify!(#field_name), stringify!(#field_numbers));
-                if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                if [#field_numbers].iter().any(|&i| i == field_number) {
                     // println!("enum variant match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                     let value = #struct_name::#field_name(::twpb::decoder::#parse_fn(&mut bytes, stringify!(#struct_name::#field_name))?);
                     return Ok(value);
@@ -87,8 +89,8 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 .unwrap_or_else(|| panic!("unknown wire type for proto type '{}'", proto_type));
             encodecode.extend(quote!{
                 #struct_name::#field_name(c) => {
-                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
-                    bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, c)?;
+                    bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &#wire_type)?;
+                    bytes_written += ::twpb::encoder::#parse_fn(buffer, c)?;
                 },
             });
         }
@@ -96,8 +98,8 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     Ok(TokenStream::from(quote!{
         impl #struct_name {
-            pub fn twpb_decode<'a, I>(field_number: u32, wire_type: u8, mut bytes: I, field_name: &str) -> Result<#struct_name, ::twpb::decoder::DecodeError>
-            where I: Iterator<Item = &'a u8> {
+            pub fn twpb_decode<I>(field_number: u32, wire_type: u8, mut bytes: &mut I, field_name: &str) -> Result<#struct_name, ::twpb::decoder::DecodeError>
+            where I: Iterator<Item = u8> {
                 // println!("decoding proto {}", stringify!(#struct_name));
 
                 #debugmsg
@@ -111,7 +113,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             }
         }
         impl ::twpb::MessageEncoder for #struct_name {
-            fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
+            fn twpb_encode(&self, buffer: &mut impl ::twpb::traits::Writer) -> Result<usize, ::twpb::traits::WriterError> {
                 let mut bytes_written = 0;
                 match &self {
                     #encodecode
@@ -193,7 +195,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
             // println!("message encountered enum for {:?}", optionarg);
             decodecode.extend(quote!{
-                if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                if [#field_numbers].iter().any(|&i| i == field_number) {
                     fieldMatch = true;
                     // println!("parsing enum field of type '{}'", stringify!(#optionarg));
                     // println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
@@ -203,7 +205,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
             encodecode.extend(quote!{
                 if let Some(value) = self.#field_name.as_ref() {
-                    bytes_written += value.twpb_encode(&mut buffer)?;
+                    bytes_written += value.twpb_encode(buffer)?;
                 }
             })
 
@@ -236,21 +238,30 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 // forward- and backward-compatible way.
                 encodecode.extend(quote!{
                     for val in self.#field_name.iter() {
-                        bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
-                        bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, val)?;
+                        bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &#wire_type)?;
+                        bytes_written += ::twpb::encoder::#parse_fn(buffer, val)?;
                     }
                 });
             // non-repeated field -> just write the value
             } else {
                 encodecode.extend(quote!{
-                    bytes_written += ::twpb::encoder::tag(&mut buffer, &#first_field_number, &#wire_type)?;
-                    bytes_written += ::twpb::encoder::#parse_fn(&mut buffer, &self.#field_name)?;
+                    let mut skip = false;
+                    if #wire_type == ::twpb::wire_types::LENGTHDELIMITED {
+                        let mut nullbuffer = ::twpb::iterators::NullCounterBuffer::new();
+                        let l = ::twpb::encoder::#parse_fn(&mut nullbuffer, &self.#field_name)?;
+                        // only a length byte was written, content is empty
+                        skip = l == 1;
+                    }
+                    if !skip {
+                        bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &#wire_type)?;
+                        bytes_written += ::twpb::encoder::#parse_fn(buffer, &self.#field_name)?;
+                    }
                 });
             }
 
             if field.repeated {
                 decodecode.extend(quote!{
-                    if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                    if [#field_numbers].iter().any(|&i| i == field_number) {
                         fieldMatch = true;
                         // packed repeated field
                         // 'string' and 'bytes' are never packed, because their non-repeated encoding is already the same as packed repeated encoding
@@ -273,7 +284,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 });
             } else {
                 decodecode.extend(quote!{
-                    if vec![#field_numbers].iter().any(|&i| i == field_number) {
+                    if [#field_numbers].iter().any(|&i| i == field_number) {
                         fieldMatch = true;
                         // println!("match for '{}::{}' ({})", stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type));
                         result.#field_name = ::twpb::decoder::#parse_fn(&mut bytes, stringify!(#field_name))?;
@@ -285,8 +296,8 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     Ok(TokenStream::from(quote!{
         impl ::twpb::MessageDecoder for #struct_name {
-            fn twpb_decode_iter<'a, I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
-            where I: Iterator<Item = &'a u8> {
+            fn twpb_decode_iter<I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
+            where I: Iterator<Item = u8> {
                 // println!("decoding proto {}", stringify!(#struct_name));
                 let mut result = #struct_name::default();
 
@@ -314,7 +325,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             }
         }
         impl ::twpb::MessageEncoder for #struct_name {
-            fn twpb_encode(&self, mut buffer: impl bytes::BufMut) -> Result<usize, ::twpb::encoder::EncodeError> {
+            fn twpb_encode(&self, buffer: &mut impl ::twpb::traits::Writer) -> Result<usize, ::twpb::traits::WriterError> {
                 let mut bytes_written = 0;
                 #encodecode
                 Ok(bytes_written)

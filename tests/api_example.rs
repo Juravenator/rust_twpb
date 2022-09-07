@@ -6,7 +6,7 @@ use twpb::{MessageDecoder};
 #[test] // We can successfully decode a getInfo API request
 fn test_get_info() {
     let dummydata = include_bytes!("files/bin/python.api.getInfo.bin");
-    let message = APIMessage::twpb_decode_iter(dummydata.iter()).unwrap();
+    let message = APIMessage::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
 
     // show-off version
     match message.content {
@@ -28,7 +28,7 @@ fn test_get_info() {
 #[should_panic(expected = "wrong request type")]
 fn test_get_info_2() {
     let dummydata = include_bytes!("files/bin/python.api.getInfo.bin");
-    let message = APIMessage::twpb_decode_iter(dummydata.iter()).unwrap();
+    let message = APIMessage::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
 
     match message.content {
         Some(apimessage::Content::V1Request(message)) => match message.request {

@@ -1,3 +1,4 @@
+#![no_std]
 // re-exporting whole modules
 pub mod iterators;
 pub mod wiretypes;
