@@ -101,7 +101,7 @@ pub fn sint32(bytes: &mut impl Writer, input :&i32) -> Result<usize, WriterError
     // an inversion + -1. (-1=1, -2=2*2-1=3, -3=3*2-1=5, -4=7)
     // We can cover both cases with an XOR.
     // We bit shift left to achieve *2,
-    // then apply an XOR on an inversed sign bit to either ferform -1 or -0.
+    // then apply an XOR on an inversed sign bit to either perform -1 or -0.
     // Examples: -2 maps to 3 and 2 maps to 4
     // ..1110 (-2) => sign=1 => ..11100 XOR ..1111 (-1) = ..0011 (3)
     // ..0010 (2)  => sign=0 => ..00100 XOR ..0000 (-0) = ..0100 (4)
