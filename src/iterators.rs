@@ -44,3 +44,57 @@ impl Writer for NullCounterBuffer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_empty_iterator() {
+        let dummydata = [1 as u8,2,3,4,5,6,7,8,9,10];
+        let mut iter = dummydata.into_iter();
+
+        let mut iter2 = LimitedIterator::new(&mut iter, 0);
+        assert_eq!(None, iter2.next());
+        assert_eq!(Some(1), iter.next());
+    }
+
+    #[test]
+    fn test_limited_iterator() {
+        // Make an array to iterate over.
+        let dummydata = [1 as u8,2,3,4,5,6,7,8,9,10];
+        // Create a regular iterator.
+        let mut iter = dummydata.into_iter();
+
+        // Create a limiter iterator that only yields the first 4 items.
+        let mut iter2 = LimitedIterator::new(&mut iter, 4);
+        assert_eq!(Some(1), iter2.next());
+        assert_eq!(Some(2), iter2.next());
+        assert_eq!(Some(3), iter2.next());
+        assert_eq!(Some(4), iter2.next());
+        assert_eq!(None, iter2.next());
+
+        // Confirm that we can still read the original iterator.
+        assert_eq!(Some(5), iter.next());
+
+        // We can make more iterators yet again.
+        let mut iter2 = LimitedIterator::new(&mut iter, 2);
+        assert_eq!(Some(6), iter2.next());
+        assert_eq!(Some(7), iter2.next());
+        assert_eq!(None, iter2.next());
+        
+        // Zero-sized iterators don't do anything.
+        let mut iter2 = LimitedIterator::new(&mut iter, 0);
+        assert_eq!(None, iter2.next());
+
+        // The limited iterator also returns none when the parent iterator is drained.
+        let mut iter2 = LimitedIterator::new(&mut iter, 100);
+        assert_eq!(Some(8), iter2.next());
+        assert_eq!(Some(9), iter2.next());
+        assert_eq!(Some(10), iter2.next());
+        assert_eq!(None, iter2.next());
+
+        // The parent iterator also returns None.
+        assert_eq!(None, iter.next());
+    }
+}
