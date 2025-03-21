@@ -44,7 +44,11 @@ pub fn leb128_i32(bytes: &mut impl Writer, input: &i32) -> Result<usize, WriterE
     leb128(bytes, &(*input as u64))
 }
 
-pub fn tag(bytes: &mut impl Writer, field_number: &u32, wire_type: &u8) -> Result<usize, WriterError> {
+pub fn tag(
+    bytes: &mut impl Writer,
+    field_number: &u32,
+    wire_type: &u8,
+) -> Result<usize, WriterError> {
     // Wire type is specified using the 3 LSBs.
     // Field type is specified using the (32-3)=29 bits next to that.
     if (field_number & 0xE0_00_00_00) != 0 {
@@ -53,10 +57,16 @@ pub fn tag(bytes: &mut impl Writer, field_number: &u32, wire_type: &u8) -> Resul
     if (wire_type & 0xF8) != 0 {
         return Err(WriterError::BufferOverflow);
     }
-    leb128_u32(bytes, &(((*field_number << 3) & 0xFF_FF_FF_F8) | (*wire_type & 0b0111) as u32))
+    leb128_u32(
+        bytes,
+        &(((*field_number << 3) & 0xFF_FF_FF_F8) | (*wire_type & 0b0111) as u32),
+    )
 }
 
-pub fn string<const SIZE: usize>(bytes: &mut impl Writer, input: &heapless::String<SIZE>) -> Result<usize, WriterError> {
+pub fn string<const SIZE: usize>(
+    bytes: &mut impl Writer,
+    input: &heapless::String<SIZE>,
+) -> Result<usize, WriterError> {
     let b = input.as_bytes();
     let mut bytes_written = 0;
 
@@ -67,23 +77,23 @@ pub fn string<const SIZE: usize>(bytes: &mut impl Writer, input: &heapless::Stri
     Ok(bytes_written)
 }
 
-pub fn int32(bytes: &mut impl Writer, input :&i32) -> Result<usize, WriterError> {
+pub fn int32(bytes: &mut impl Writer, input: &i32) -> Result<usize, WriterError> {
     leb128_i32(bytes, input)
 }
 
-pub fn int64(bytes: &mut impl Writer, input :&i64) -> Result<usize, WriterError> {
+pub fn int64(bytes: &mut impl Writer, input: &i64) -> Result<usize, WriterError> {
     leb128_i64(bytes, input)
 }
 
-pub fn uint32(bytes: &mut impl Writer, input :&u32) -> Result<usize, WriterError> {
+pub fn uint32(bytes: &mut impl Writer, input: &u32) -> Result<usize, WriterError> {
     leb128_u32(bytes, input)
 }
 
-pub fn uint64(bytes: &mut impl Writer, input :&u64) -> Result<usize, WriterError> {
+pub fn uint64(bytes: &mut impl Writer, input: &u64) -> Result<usize, WriterError> {
     leb128(bytes, input)
 }
 
-pub fn sint32(bytes: &mut impl Writer, input :&i32) -> Result<usize, WriterError> {
+pub fn sint32(bytes: &mut impl Writer, input: &i32) -> Result<usize, WriterError> {
     // sint32/64 values are identical to their int32/64 counterparts, except that they
     // use ZigZag encoding to prevent negative numbers immediately taking up 10 bytes in leb128.
     // They do this by mapping low->high signed numbers to low->high unsigned numbers.
@@ -146,7 +156,10 @@ pub fn bool(bytes: &mut impl Writer, input: &bool) -> Result<usize, WriterError>
     write_u8(bytes, *input as u8)
 }
 
-pub fn bytes<const SIZE: usize>(bytes: &mut impl Writer, input: &heapless::Vec<u8, SIZE>) -> Result<usize, WriterError> {
+pub fn bytes<const SIZE: usize>(
+    bytes: &mut impl Writer,
+    input: &heapless::Vec<u8, SIZE>,
+) -> Result<usize, WriterError> {
     let mut bytes_written = 0;
     // Write the size bits
     bytes_written += leb128_u32(bytes, &(input.len() as u32))?;

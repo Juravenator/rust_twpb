@@ -1,10 +1,10 @@
 mod types;
 
-use types::{Simple, Embedded, embedded};
-use twpb::{MessageEncoder, MessageDecoder};
+use twpb::{MessageDecoder, MessageEncoder};
+use types::{embedded, Embedded, Simple};
 
 #[test]
-fn test_simple(){
+fn test_simple() {
     let dummydata = include_bytes!("files/bin/python.simple.bin");
     let expected_len = dummydata.len();
 
@@ -25,7 +25,7 @@ fn test_simple(){
 }
 
 #[test]
-fn test_oneof_simple(){
+fn test_oneof_simple() {
     let dummydata = include_bytes!("files/bin/python.oneof.simple.bin");
     let expected_len = dummydata.len();
 
@@ -41,12 +41,13 @@ fn test_oneof_simple(){
     let mut dummydata = [0x0; 100];
     let bytes_written = expected.twpb_encode(&mut dummydata.as_mut()).unwrap();
     assert_eq!(bytes_written, expected_len);
-    let parsed = Embedded::twpb_decode_iter(dummydata[0..bytes_written].iter().map(|x| *x)).unwrap();
+    let parsed =
+        Embedded::twpb_decode_iter(dummydata[0..bytes_written].iter().map(|x| *x)).unwrap();
     assert_eq!(parsed, expected);
 }
 
 #[test]
-fn test_oneof_embedded(){
+fn test_oneof_embedded() {
     let dummydata = include_bytes!("files/bin/python.oneof.embedded.bin");
 
     let parsed = Embedded::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();

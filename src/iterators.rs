@@ -1,14 +1,20 @@
 use crate::traits::{Writer, WriterError};
 
-pub struct LimitedIterator<I> where I: Iterator<Item = u8> {
+pub struct LimitedIterator<I>
+where
+    I: Iterator<Item = u8>,
+{
     source_iterator: I,
     range: u32,
     current_index: u32,
 }
 
-impl<I> LimitedIterator<I> where I: Iterator<Item = u8> {
+impl<I> LimitedIterator<I>
+where
+    I: Iterator<Item = u8>,
+{
     pub fn new(source_iterator: I, range: u32) -> Self {
-        LimitedIterator{
+        LimitedIterator {
             source_iterator: source_iterator,
             range: range,
             current_index: 0,
@@ -16,7 +22,10 @@ impl<I> LimitedIterator<I> where I: Iterator<Item = u8> {
     }
 }
 
-impl<I> Iterator for LimitedIterator<I> where I: Iterator<Item = u8> {
+impl<I> Iterator for LimitedIterator<I>
+where
+    I: Iterator<Item = u8>,
+{
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_index < self.range {
@@ -29,12 +38,12 @@ impl<I> Iterator for LimitedIterator<I> where I: Iterator<Item = u8> {
 }
 
 pub struct NullCounterBuffer {
-    current_index: usize
+    current_index: usize,
 }
 
 impl NullCounterBuffer {
     pub fn new() -> Self {
-        NullCounterBuffer{current_index: 0}
+        NullCounterBuffer { current_index: 0 }
     }
 }
 
@@ -51,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_empty_iterator() {
-        let dummydata = [1 as u8,2,3,4,5,6,7,8,9,10];
+        let dummydata = [1 as u8, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let mut iter = dummydata.into_iter();
 
         let mut iter2 = LimitedIterator::new(&mut iter, 0);
@@ -62,7 +71,7 @@ mod tests {
     #[test]
     fn test_limited_iterator() {
         // Make an array to iterate over.
-        let dummydata = [1 as u8,2,3,4,5,6,7,8,9,10];
+        let dummydata = [1 as u8, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         // Create a regular iterator.
         let mut iter = dummydata.into_iter();
 
@@ -82,7 +91,7 @@ mod tests {
         assert_eq!(Some(6), iter2.next());
         assert_eq!(Some(7), iter2.next());
         assert_eq!(None, iter2.next());
-        
+
         // Zero-sized iterators don't do anything.
         let mut iter2 = LimitedIterator::new(&mut iter, 0);
         assert_eq!(None, iter2.next());

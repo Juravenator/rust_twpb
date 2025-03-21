@@ -1,10 +1,10 @@
 mod types;
 
-use types::{SimpleTypes, RepeatedTypes};
-use twpb::{MessageEncoder, MessageDecoder};
+use twpb::{MessageDecoder, MessageEncoder};
+use types::{RepeatedTypes, SimpleTypes};
 
 #[test]
-fn test_types(){
+fn test_types() {
     // Test if binary data from another library (in this case Python)
     // is correctly parsed by us
     let dummydata = include_bytes!("files/bin/python.types.simple.bin");
@@ -33,6 +33,7 @@ fn test_types(){
     let mut dummydata = [0x0; 1000];
 
     let bytes_written = expected.twpb_encode(&mut dummydata.as_mut()).unwrap();
+    #[rustfmt::skip]
     let expected_bytes = [
         0x08, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0x01, 0x10, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
@@ -51,7 +52,7 @@ fn test_types(){
 }
 
 #[test]
-fn test_types_repeated_decode(){
+fn test_types_repeated_decode() {
     let dummydata = include_bytes!("files/bin/python.types.repeated.bin");
 
     let parsed = RepeatedTypes::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
@@ -87,6 +88,7 @@ fn test_types_repeated_decode(){
     // Note that we can't encode and check for binary match with external data. Order is not guaranteed.
     let mut dummydata = [0x0; 1000];
     let bytes_written = expected.twpb_encode(&mut dummydata.as_mut()).unwrap();
+    #[rustfmt::skip]
     let expected_bytes = [
         0x08, 0x04, 0x08, 0xD4, 0xFD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0x01, 0x10, 0x45, 0x10, 0xBB, 0xFF, 0xFF, 0xFF,

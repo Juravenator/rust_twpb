@@ -1,12 +1,12 @@
 mod types;
 
+use twpb::MessageEncoder;
 use types::RepeatedTypes;
-use twpb::{MessageEncoder};
 
 #[test]
 // A packed repeated field containing zero elements does not
 // appear in the encoded message.
-fn test_repeated_encode_zero_elements(){
+fn test_repeated_encode_zero_elements() {
     let source = RepeatedTypes {
         int32: heapless::Vec::new(),
         int32_notpacked: heapless::Vec::new(),
@@ -34,7 +34,7 @@ fn test_repeated_encode_zero_elements(){
 #[test]
 // Yes other tests cover this, but let's add one field with actual data
 // to ensure we're still actually encoding something.
-fn test_repeated_encode_one_element(){
+fn test_repeated_encode_one_element() {
     let source = RepeatedTypes {
         int32: heapless::Vec::new(),
         int32_notpacked: heapless::Vec::new(),

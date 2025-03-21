@@ -2,19 +2,22 @@ mod types;
 
 use std::fs;
 
-use types::*;
 use twpb::traits::MessageEncoder;
+use types::*;
 
 #[test]
-fn generate_python_test_bin_files(){
+fn generate_python_test_bin_files() {
     let mut bytes = [0x0; 1000];
     let len = Simple {
         serial: heapless::String::try_from("serial").unwrap(),
         firmware_version: heapless::String::try_from("firmware").unwrap(),
         vendor: heapless::String::try_from("vendor").unwrap(),
         product: heapless::String::try_from("product").unwrap(),
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len]).expect("Unable to write file");
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len])
+        .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = Embedded {
@@ -22,28 +25,37 @@ fn generate_python_test_bin_files(){
             heapless::String::try_from("teststr").unwrap(),
         )),
         something_else: heapless::String::new(),
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len]).expect("Unable to write file");
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len])
+        .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = Embedded {
-        content: Some(embedded::Content::Ss(Simple{
+        content: Some(embedded::Content::Ss(Simple {
             serial: heapless::String::try_from("serial").unwrap(),
             firmware_version: heapless::String::try_from("firmware").unwrap(),
             vendor: heapless::String::try_from("vendor").unwrap(),
             product: heapless::String::try_from("product").unwrap(),
         })),
         something_else: heapless::String::try_from("something else").unwrap(),
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.oneof.embedded.bin", &bytes[0..len]).expect("Unable to write file");
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.oneof.embedded.bin", &bytes[0..len])
+        .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = APIMessage {
-        content: Some(apimessage::Content::V1Request(v1::Request{
-            request: Some(v1::request::Request::GetInfo(v1::EmptyRequest{}))
-        }))
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.api.getInfo.bin", &bytes[0..len]).expect("Unable to write file");
+        content: Some(apimessage::Content::V1Request(v1::Request {
+            request: Some(v1::request::Request::GetInfo(v1::EmptyRequest {})),
+        })),
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.api.getInfo.bin", &bytes[0..len])
+        .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = SimpleTypes {
@@ -62,8 +74,11 @@ fn generate_python_test_bin_files(){
         boolean: true,
         string: heapless::String::try_from("🐉").unwrap(),
         bytes: heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.types.simple.bin", &bytes[0..len]).expect("Unable to write file");
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.types.simple.bin", &bytes[0..len])
+        .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = RepeatedTypes {
@@ -88,8 +103,12 @@ fn generate_python_test_bin_files(){
         .unwrap(),
         bytes: heapless::Vec::from_slice(&[
             heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
-            heapless::Vec::from_slice(&['A' as u8, 'B' as u8, 'C' as u8, 'D' as u8]).unwrap()
-        ]).unwrap(),
-    }.twpb_encode(&mut bytes.as_mut()).unwrap();
-    fs::write("tests/files/bin/twpb.types.repeated.bin", &bytes[0..len]).expect("Unable to write file");
+            heapless::Vec::from_slice(&['A' as u8, 'B' as u8, 'C' as u8, 'D' as u8]).unwrap(),
+        ])
+        .unwrap(),
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.types.repeated.bin", &bytes[0..len])
+        .expect("Unable to write file");
 }

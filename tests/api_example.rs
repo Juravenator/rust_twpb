@@ -1,7 +1,7 @@
 mod types;
 
-use types::{APIMessage, apimessage, v1};
-use twpb::{MessageDecoder};
+use twpb::MessageDecoder;
+use types::{apimessage, v1, APIMessage};
 
 #[test] // We can successfully decode a getInfo API request
 fn test_get_info() {
@@ -10,7 +10,9 @@ fn test_get_info() {
 
     // show-off version
     match message.content {
-        Some(apimessage::Content::V1Request(v1::Request{request: Some(v1::request::Request::GetInfo(_))})) => (),
+        Some(apimessage::Content::V1Request(v1::Request {
+            request: Some(v1::request::Request::GetInfo(_)),
+        })) => (),
         _ => panic!("unexpected api message content"),
     }
 

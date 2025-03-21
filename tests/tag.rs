@@ -12,7 +12,8 @@ fn test_tags() {
 #[test]
 fn test_tags_max() {
     let mut buffer = [0x0; 100];
-    let bytes_written = ::twpb::encoder::tag(&mut buffer.as_mut(), &((u32::MAX << 3) >> 3), &0b0111).unwrap();
+    let bytes_written =
+        ::twpb::encoder::tag(&mut buffer.as_mut(), &((u32::MAX << 3) >> 3), &0b0111).unwrap();
     assert_eq!(bytes_written, 5);
     assert_eq!(buffer[0..bytes_written], [0xFF, 0xFF, 0xFF, 0xFF, 0x0F]);
     let (field_number, wire_type) = ::twpb::decoder::tag(buffer.into_iter()).unwrap();

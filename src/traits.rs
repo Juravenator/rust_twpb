@@ -27,7 +27,8 @@ pub trait MessageDecoder: Sized {
     }
 
     fn twpb_decode_iter<I>(bytes: I) -> Result<Self, crate::decoder::DecodeError>
-    where I: Iterator<Item = u8>;
+    where
+        I: Iterator<Item = u8>;
 }
 
 impl Writer for &mut [u8] {
