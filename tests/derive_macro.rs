@@ -10,10 +10,10 @@ fn test_simple(){
 
     let parsed = Simple::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     let expected = Simple {
-        serial: heapless::String::from("serial"),
-        firmware_version: heapless::String::from("firmware"),
-        vendor: heapless::String::from("vendor"),
-        product: heapless::String::from("product"),
+        serial: heapless::String::try_from("serial").unwrap(),
+        firmware_version: heapless::String::try_from("firmware").unwrap(),
+        vendor: heapless::String::try_from("vendor").unwrap(),
+        product: heapless::String::try_from("product").unwrap(),
     };
     assert_eq!(parsed, expected);
 
@@ -31,8 +31,10 @@ fn test_oneof_simple(){
 
     let parsed = Embedded::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     let expected = Embedded {
-        content: Some(embedded::Content::Test(heapless::String::from("teststr"))),
-        something_else: heapless::String::from(""),
+        content: Some(embedded::Content::Test(
+            heapless::String::try_from("teststr").unwrap(),
+        )),
+        something_else: heapless::String::new(),
     };
     assert_eq!(parsed, expected);
 
@@ -49,13 +51,13 @@ fn test_oneof_embedded(){
 
     let parsed = Embedded::twpb_decode_iter(dummydata.iter().map(|x| *x)).unwrap();
     let expected = Embedded {
-        content: Some(embedded::Content::Ss(Simple{
-            serial: heapless::String::from("serial"),
-            firmware_version: heapless::String::from("firmware"),
-            vendor: heapless::String::from("vendor"),
-            product: heapless::String::from("product"),
+        content: Some(embedded::Content::Ss(Simple {
+            serial: heapless::String::try_from("serial").unwrap(),
+            firmware_version: heapless::String::try_from("firmware").unwrap(),
+            vendor: heapless::String::try_from("vendor").unwrap(),
+            product: heapless::String::try_from("product").unwrap(),
         })),
-        something_else: heapless::String::from("something else"),
+        something_else: heapless::String::try_from("something else").unwrap(),
     };
     assert_eq!(parsed, expected);
     println!("{:?}", parsed);

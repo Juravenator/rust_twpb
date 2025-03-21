@@ -9,29 +9,31 @@ use twpb::traits::MessageEncoder;
 fn generate_python_test_bin_files(){
     let mut bytes = [0x0; 1000];
     let len = Simple {
-        serial: heapless::String::from("serial"),
-        firmware_version: heapless::String::from("firmware"),
-        vendor: heapless::String::from("vendor"),
-        product: heapless::String::from("product"),
+        serial: heapless::String::try_from("serial").unwrap(),
+        firmware_version: heapless::String::try_from("firmware").unwrap(),
+        vendor: heapless::String::try_from("vendor").unwrap(),
+        product: heapless::String::try_from("product").unwrap(),
     }.twpb_encode(&mut bytes.as_mut()).unwrap();
     fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len]).expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = Embedded {
-        content: Some(embedded::Content::Test(heapless::String::from("teststr"))),
-        something_else: heapless::String::from(""),
+        content: Some(embedded::Content::Test(
+            heapless::String::try_from("teststr").unwrap(),
+        )),
+        something_else: heapless::String::new(),
     }.twpb_encode(&mut bytes.as_mut()).unwrap();
     fs::write("tests/files/bin/twpb.oneof.simple.bin", &bytes[0..len]).expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
     let len = Embedded {
         content: Some(embedded::Content::Ss(Simple{
-            serial: heapless::String::from("serial"),
-            firmware_version: heapless::String::from("firmware"),
-            vendor: heapless::String::from("vendor"),
-            product: heapless::String::from("product"),
+            serial: heapless::String::try_from("serial").unwrap(),
+            firmware_version: heapless::String::try_from("firmware").unwrap(),
+            vendor: heapless::String::try_from("vendor").unwrap(),
+            product: heapless::String::try_from("product").unwrap(),
         })),
-        something_else: heapless::String::from("something else"),
+        something_else: heapless::String::try_from("something else").unwrap(),
     }.twpb_encode(&mut bytes.as_mut()).unwrap();
     fs::write("tests/files/bin/twpb.oneof.embedded.bin", &bytes[0..len]).expect("Unable to write file");
 
@@ -58,7 +60,7 @@ fn generate_python_test_bin_files(){
         double: 1.0,
         float: 3.1415926535,
         boolean: true,
-        string: heapless::String::from("🐉"),
+        string: heapless::String::try_from("🐉").unwrap(),
         bytes: heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
     }.twpb_encode(&mut bytes.as_mut()).unwrap();
     fs::write("tests/files/bin/twpb.types.simple.bin", &bytes[0..len]).expect("Unable to write file");
@@ -79,7 +81,11 @@ fn generate_python_test_bin_files(){
         double: heapless::Vec::from_slice(&[1.0, 3.1415926535]).unwrap(),
         float: heapless::Vec::from_slice(&[3.1415926535, 1.0]).unwrap(),
         boolean: heapless::Vec::from_slice(&[true, false]).unwrap(),
-        string: heapless::Vec::from_slice(&[heapless::String::from("🐉"), heapless::String::from("अरे")]).unwrap(),
+        string: heapless::Vec::from_slice(&[
+            heapless::String::try_from("🐉").unwrap(),
+            heapless::String::try_from("अरे").unwrap(),
+        ])
+        .unwrap(),
         bytes: heapless::Vec::from_slice(&[
             heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
             heapless::Vec::from_slice(&['A' as u8, 'B' as u8, 'C' as u8, 'D' as u8]).unwrap()

@@ -24,7 +24,7 @@ fn test_types(){
         double: 1.0,
         float: 3.1415926535,
         boolean: true,
-        string: heapless::String::from("🐉"),
+        string: heapless::String::try_from("🐉").unwrap(),
         bytes: heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
     };
     assert_eq!(parsed, expected);
@@ -70,11 +70,16 @@ fn test_types_repeated_decode(){
         double: heapless::Vec::from_slice(&[1.0, 3.1415926535]).unwrap(),
         float: heapless::Vec::from_slice(&[3.1415926535, 1.0]).unwrap(),
         boolean: heapless::Vec::from_slice(&[true, false]).unwrap(),
-        string: heapless::Vec::from_slice(&[heapless::String::from("🐉"), heapless::String::from("अरे")]).unwrap(),
+        string: heapless::Vec::from_slice(&[
+            heapless::String::try_from("🐉").unwrap(),
+            heapless::String::try_from("अरे").unwrap(),
+        ])
+        .unwrap(),
         bytes: heapless::Vec::from_slice(&[
             heapless::Vec::from_slice(&['A' as u8, 'S' as u8, 'D' as u8, 'F' as u8]).unwrap(),
-            heapless::Vec::from_slice(&['A' as u8, 'B' as u8, 'C' as u8, 'D' as u8]).unwrap()
-        ]).unwrap(),
+            heapless::Vec::from_slice(&['A' as u8, 'B' as u8, 'C' as u8, 'D' as u8]).unwrap(),
+        ])
+        .unwrap(),
     };
     assert_eq!(parsed, expected);
 
