@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import sys
+sys.path.append('../../generated/python')
 
 from simple_pb2 import SuperSimple, Message
 from types_pb2 import SimpleTypes, RepeatedTypes
