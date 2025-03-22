@@ -6,17 +6,15 @@ use wiretypes::wire_types;
 
 extern crate proc_macro;
 extern crate proc_macro2;
-use proc_macro::{TokenStream};
-use proc_macro2::{Span};
+use proc_macro::TokenStream;
+use proc_macro2::Span;
 use quote::quote;
-use syn::{self, Data, DataStruct, DataEnum, DeriveInput, Fields, Ident};
-
+use syn::{self, Data, DataEnum, DataStruct, DeriveInput, Fields, Ident};
 
 #[proc_macro_derive(Enum, attributes(twpb))]
 pub fn derive_enum(tokens: TokenStream) -> TokenStream {
     try_derive_enum(tokens).unwrap()
 }
-
 
 fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     let input: DeriveInput = syn::parse(tokens)?;
@@ -25,7 +23,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
     // println!("derive enum {}", struct_name);
 
     let variants = match input.data {
-        Data::Enum(DataEnum{variants, ..}) => variants,
+        Data::Enum(DataEnum { variants, .. }) => variants,
         _ => panic!("Derive enum called on non-enum type"),
     };
 
@@ -39,11 +37,15 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         let field_name = field.field_name;
         let proto_type = field.proto_type;
         let field_type = field.field_type;
-        let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
+        let field_numbers = field
+            .field_numbers
+            .iter()
+            .map(|n| quote!(#n))
+            .reduce(|acc, new| quote! {#acc , #new});
         let first_field_number = field.field_numbers[0];
-        // println!("'{}' of type {:?} has field numbers {:?}", 
+        // println!("'{}' of type {:?} has field numbers {:?}",
         //     field_name, proto_type, field.field_numbers);
-        debugmsg.extend(quote!{
+        debugmsg.extend(quote! {
             // println!("Dealing with variant '{}::{}' ({}) at field numbers [{}]",
             //     stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
         });
@@ -96,7 +98,7 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         }
     }
 
-    Ok(TokenStream::from(quote!{
+    Ok(TokenStream::from(quote! {
         impl #struct_name {
             pub fn twpb_decode<I>(field_number: u32, wire_type: u8, mut bytes: &mut I, field_name: &str) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = u8> {
@@ -136,19 +138,27 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
     // Get all struct fields
     let fields = match input.data {
-        Data::Struct(DataStruct{fields: Fields::Named(syn::FieldsNamed{named: fields, ..}), ..})
-            => fields.into_iter().collect(),
+        Data::Struct(DataStruct {
+            fields: Fields::Named(syn::FieldsNamed { named: fields, .. }),
+            ..
+        }) => fields.into_iter().collect(),
         // There can also be no fields at all
-        Data::Struct(DataStruct{fields: Fields::Unit, ..}) => vec![],
+        Data::Struct(DataStruct {
+            fields: Fields::Unit,
+            ..
+        }) => vec![],
 
-        Data::Struct(DataStruct{fields: Fields::Unnamed(..), ..})
-            => panic!("Unnamed fields are not supported"),
+        Data::Struct(DataStruct {
+            fields: Fields::Unnamed(..),
+            ..
+        }) => panic!("Unnamed fields are not supported"),
         Data::Enum(..) => panic!("Message can not be derived for an enum"),
         Data::Union(..) => panic!("Message can not be derived for a union"),
     };
 
     // Parse each field and extract protobuf info
-    let fields: Result<Vec<_>, _> = fields.into_iter()
+    let fields: Result<Vec<_>, _> = fields
+        .into_iter()
         .map(|field| ParsedField::parse(field))
         .collect();
     let fields = fields?;
@@ -162,14 +172,18 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
         let field_name = field.field_name;
         let proto_type = field.proto_type;
-        let field_numbers = field.field_numbers.iter().map(|n| quote!(#n)).reduce(|acc, new| quote! {#acc , #new});
+        let field_numbers = field
+            .field_numbers
+            .iter()
+            .map(|n| quote!(#n))
+            .reduce(|acc, new| quote! {#acc , #new});
         let first_field_number = field.field_numbers[0];
         // allocatecode.extend(quote!{
         //     // println!("Dealing with '{}::{}' ({}) at field numbers [{}]",
         //     //     stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
         // });
         if field.repeated {
-            allocatecode.extend(quote!{
+            allocatecode.extend(quote! {
                 result.#field_name = ::heapless::Vec::new();
             });
         }
@@ -179,14 +193,24 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
 
             // Get the Option object
             let optionarg = match field.field_type {
-                syn::Type::Path(syn::TypePath{path: syn::Path{segments: b, ..}, ..}) => 
-                b.into_iter().find(|b| b.ident == "Option" && ! b.arguments.is_empty()).unwrap().arguments,
+                syn::Type::Path(syn::TypePath {
+                    path: syn::Path { segments: b, .. },
+                    ..
+                }) => {
+                    b.into_iter()
+                        .find(|b| b.ident == "Option" && !b.arguments.is_empty())
+                        .unwrap()
+                        .arguments
+                }
                 _ => panic!("oneof field '{}' not wrapped in Option object", field_name),
             };
 
             // Get the arguments inside it
             let optionarg = match optionarg {
-                syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments{args: b, ..}) => b,
+                syn::PathArguments::AngleBracketed(syn::AngleBracketedGenericArguments {
+                    args: b,
+                    ..
+                }) => b,
                 _ => panic!("Invalid Option object for oneof field '{}'", field_name),
             };
 
@@ -203,15 +227,16 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 }
             });
 
-            encodecode.extend(quote!{
+            encodecode.extend(quote! {
                 if let Some(value) = self.#field_name.as_ref() {
                     bytes_written += value.twpb_encode(buffer)?;
                 }
             })
-
         } else if proto_type == "message" {
-            panic!("encountered embedded message for {}, {}", field_name, proto_type);
-
+            panic!(
+                "encountered embedded message for {}, {}",
+                field_name, proto_type
+            );
         } else {
             let parse_fn = Ident::new(&format!("{}", &proto_type), Span::call_site());
 
@@ -294,7 +319,7 @@ fn try_derive_message(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
         }
     }
 
-    Ok(TokenStream::from(quote!{
+    Ok(TokenStream::from(quote! {
         impl ::twpb::MessageDecoder for #struct_name {
             fn twpb_decode_iter<I>(mut bytes: I) -> Result<#struct_name, ::twpb::decoder::DecodeError>
             where I: Iterator<Item = u8> {

@@ -18,25 +18,27 @@ pub struct ParsedVariant {
     pub proto_type: String,
 }
 
-
 impl ParsedVariant {
     pub fn parse(field: syn::Variant) -> syn::parse::Result<Self> {
         let field_type = match field.fields {
-            syn::Fields::Unnamed(syn::FieldsUnnamed{unnamed: fields, ..}) => fields.into_iter().nth(0),
+            syn::Fields::Unnamed(syn::FieldsUnnamed {
+                unnamed: fields, ..
+            }) => fields.into_iter().nth(0),
             _ => panic!("no enum variant type {}", field.ident),
         };
         let field_type = match field_type {
             Some(field_type) => field_type.ty,
             _ => panic!("no enum variant type"),
         };
-        let mut result = ParsedVariant{
+        let mut result = ParsedVariant {
             field_name: field.ident,
             field_numbers: vec![0],
             field_type: field_type,
             proto_type: "".to_owned(),
         };
 
-        let twpb_attr: Vec<_> = field.attrs
+        let twpb_attr: Vec<_> = field
+            .attrs
             .into_iter()
             .filter(|a| a.path.is_ident("twpb"))
             .collect();
@@ -52,9 +54,12 @@ impl ParsedVariant {
             Meta::List(l) => l.nested,
             // One can also write other attributes, like '#[twpb = value]'.
             // We don't do that here.
-            _ => panic!("twpb attribute can only be of the form '#[twpb(..)]': {:?}", twpb_attr),
+            _ => panic!(
+                "twpb attribute can only be of the form '#[twpb(..)]': {:?}",
+                twpb_attr
+            ),
         };
-        
+
         for meta in metas {
             match meta {
                 // parse the field number
@@ -113,8 +118,7 @@ impl ParsedVariant {
 
 impl ParsedField {
     pub fn parse(field: syn::Field) -> syn::parse::Result<Self> {
-
-        let mut result = ParsedField{
+        let mut result = ParsedField {
             field_name: field.ident.expect("Field has no name"),
             field_numbers: vec![0],
             proto_type: "".to_owned(),
@@ -122,8 +126,8 @@ impl ParsedField {
             repeated: false,
         };
 
-
-        let twpb_attr: Vec<_> = field.attrs
+        let twpb_attr: Vec<_> = field
+            .attrs
             .into_iter()
             .filter(|a| a.path.is_ident("twpb"))
             .collect();
@@ -139,9 +143,12 @@ impl ParsedField {
             Meta::List(l) => l.nested,
             // One can also write other attributes, like '#[twpb = value]'.
             // We don't do that here.
-            _ => panic!("twpb attribute can only be of the form '#[twpb(..)]': {:?}", twpb_attr),
+            _ => panic!(
+                "twpb attribute can only be of the form '#[twpb(..)]': {:?}",
+                twpb_attr
+            ),
         };
-        
+
         for meta in metas {
             match meta {
                 // parse the field number

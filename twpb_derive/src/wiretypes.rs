@@ -15,22 +15,17 @@ pub mod wire_types {
 
     pub fn for_proto_type(proto_type: &str) -> Option<u8> {
         match proto_type {
-            "int32" | "int64" |
-            "uint32" | "uint64" |
-            "sint32" | "sint64" |
-            "bool" | "enum" 
-            => Some(VARINT),
+            "int32" | "int64" | "uint32" | "uint64" | "sint32" | "sint64" | "bool" | "enum" => {
+                Some(VARINT)
+            }
 
-            "fixed64" | "sfixed64" | "double"
-            => Some(B64),
+            "fixed64" | "sfixed64" | "double" => Some(B64),
 
-            "string" | "bytes" | "message"
-            => Some(LENGTHDELIMITED),
+            "string" | "bytes" | "message" => Some(LENGTHDELIMITED),
 
-            "fixed32" | "sfixed32" | "float"
-            => Some(B32),
+            "fixed32" | "sfixed32" | "float" => Some(B32),
 
-            _ => None
+            _ => None,
         }
     }
 }
