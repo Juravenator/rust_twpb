@@ -34,13 +34,13 @@ with open("../../bin/twpb.oneof.embedded.bin", "rb") as fd:
 
 with open("../../bin/twpb.api.getInfo.bin", "rb") as fd:
     message = api.Message().FromString(fd.read())
-    assert hasattr(message.v1_request, 'getInfo')
-    assert not hasattr(message.v1_request, 'GetOtherThing')
+    assert message.v1_request.HasField('getInfo')
+    assert not message.v1_request.HasField('getOtherThing')
 
 with open("../../bin/twpb.api.getOtherThing.bin", "rb") as fd:
     message = api.Message().FromString(fd.read())
-    assert not hasattr(message.v1_request, 'getInfo')
-    assert hasattr(message.v1_request, 'GetOtherThing')
+    assert not message.v1_request.HasField('getInfo')
+    assert message.v1_request.HasField('getOtherThing')
 
 with open("../../bin/twpb.types.simple.bin", "rb") as fd:
     message = SimpleTypes().FromString(fd.read())
