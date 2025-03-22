@@ -43,12 +43,14 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
             .map(|n| quote!(#n))
             .reduce(|acc, new| quote! {#acc , #new});
         let first_field_number = field.field_numbers[0];
-        // println!("'{}' of type {:?} has field numbers {:?}",
-        //     field_name, proto_type, field.field_numbers);
-        debugmsg.extend(quote! {
-            // println!("Dealing with variant '{}::{}' ({}) at field numbers [{}]",
-            //     stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
-        });
+        // println!(
+        //     "'{}' of type {:?} has field numbers {:?}",
+        //     field_name, proto_type, field.field_numbers
+        // );
+        // debugmsg.extend(quote! {
+        //     println!("Dealing with variant '{}::{}' ({}) at field numbers [{}]",
+        //         stringify!(#struct_name), stringify!(#field_name), stringify!(#proto_type), stringify!(#field_numbers));
+        // });
 
         if proto_type == "oneof" {
             panic!("nested oneof unimplemented")
@@ -67,11 +69,13 @@ fn try_derive_enum(tokens: TokenStream) -> Result<TokenStream, syn::Error> {
                 #struct_name::#field_name(c) => {
                     // We need to send the payload size first.
                     // So serialize twice, once to a nil buffer just to count bytes
+                    // println!("encoding variant {}::{}", stringify!(#struct_name), stringify!(#field_name));
                     let mut nullbuffer = ::twpb::iterators::NullCounterBuffer::new();
                     let len = c.twpb_encode(&mut nullbuffer)?;
+                    // println!("variant size is {}", len);
+                    bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &::twpb::wire_types::LENGTHDELIMITED)?;
+                    bytes_written += ::twpb::encoder::leb128_u32(buffer, &(len as u32))?;
                     if len != 0 {
-                        bytes_written += ::twpb::encoder::tag(buffer, &#first_field_number, &::twpb::wire_types::LENGTHDELIMITED)?;
-                        bytes_written += ::twpb::encoder::leb128_u32(buffer, &(len as u32))?;
                         // second time to actually send data
                         bytes_written += c.twpb_encode(buffer)?;
                     }
