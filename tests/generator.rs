@@ -58,6 +58,17 @@ fn generate_python_test_bin_files() {
         .expect("Unable to write file");
 
     let mut bytes = [0x0; 1000];
+    let len = APIMessage {
+        content: Some(apimessage::Content::V1Request(v1::Request {
+            request: Some(v1::request::Request::GetOtherThing(v1::EmptyRequest {})),
+        })),
+    }
+    .twpb_encode(&mut bytes.as_mut())
+    .unwrap();
+    fs::write("tests/files/bin/twpb.api.getOtherThing.bin", &bytes[0..len])
+        .expect("Unable to write file");
+
+    let mut bytes = [0x0; 1000];
     let len = SimpleTypes {
         int32: -69,
         int64: -9223372036854775808,

@@ -37,6 +37,11 @@ with open("../../bin/twpb.api.getInfo.bin", "rb") as fd:
     assert hasattr(message.v1_request, 'getInfo')
     assert not hasattr(message.v1_request, 'GetOtherThing')
 
+with open("../../bin/twpb.api.getOtherThing.bin", "rb") as fd:
+    message = api.Message().FromString(fd.read())
+    assert not hasattr(message.v1_request, 'getInfo')
+    assert hasattr(message.v1_request, 'GetOtherThing')
+
 with open("../../bin/twpb.types.simple.bin", "rb") as fd:
     message = SimpleTypes().FromString(fd.read())
     assertEq(message.int32, -69)

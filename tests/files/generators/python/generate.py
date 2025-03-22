@@ -40,6 +40,11 @@ m.v1_request.getInfo.SetInParent()
 with open("../../bin/python.api.getInfo.bin", "wb") as fd:
     fd.write(m.SerializeToString())
 
+m = api.Message()
+m.v1_request.getOtherThing.SetInParent()
+with open("../../bin/python.api.getOtherThing.bin", "wb") as fd:
+    fd.write(m.SerializeToString())
+
 m = SimpleTypes()
 m.int32 = -69
 m.int64 = -9223372036854775808
